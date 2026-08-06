@@ -1,0 +1,4 @@
+# >>> dev-* skills (managed by dev-setup) >>>
+# Local scratch workspace for dev-* skills
+/scratch/
+# <<< dev-* skills (managed by dev-setup) <<<
