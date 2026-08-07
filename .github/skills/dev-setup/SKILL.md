@@ -1,22 +1,24 @@
 ---
 name: dev-setup
-description: "Bootstraps a repository for local inner-loop development with the `dev-*` skills. USE FOR: setting up a repo clone so `dev-request`, `dev-report`, `dev-plan`, `dev-do`, and `dev-review` are available, scaffolding or auditing the repo-root `AGENTS.md` that those skills read for build/test commands and conventions, and wiring up `scratch/`. Asks whether the setup should be **included in** or **excluded from** git; when excluded it writes per-skill rules to `.git/info/exclude` and leaves the shared `.gitignore` untouched. Accepts an optional path to the target repo (defaults to the current git repository) and an optional `git_mode` of `include` or `exclude`. Idempotent and re-runnable. Never commits, never pushes."
+description: "Bootstraps a repository for local inner-loop development with the `dev-*` skills. USE FOR: setting up a repo clone so `dev-request`, `dev-report`, `dev-plan`, `dev-do`, `dev-review`, `dev-issue`, and `dev-pr-open` are available, scaffolding or auditing the repo-root `AGENTS.md` that those skills read for build/test commands and conventions, and wiring up `scratch/`. Asks whether the setup should be **included in** or **excluded from** git; when excluded it writes per-skill rules to `.git/info/exclude` and leaves the shared `.gitignore` untouched. Also asks whether the opt-in GitHub integration should be enabled, and records the answer — along with the target repository, label mapping, changelog location, and draft-PR policy — in the target's `AGENTS.md`. Accepts an optional path to the target repo (defaults to the current git repository) and an optional `git_mode` of `include` or `exclude`. Idempotent and re-runnable. Never commits, never pushes."
 ---
 
 # Dev Setup Skill
 
 Bootstraps a repository for inner-loop development with the `dev-*` skills.
 One invocation makes a repo ready to use `dev-request` → `dev-report` →
-`dev-plan` → `dev-do` → `dev-review`.
+`dev-plan` → `dev-do` → `dev-review` → `dev-pr-open`, with `dev-issue` as
+an opt-in side branch that publishes any of those artifacts to GitHub.
 
 This skill is the **installer**. It runs from the canonical source
-repository (this one) and copies the *other* five skills into a target repo,
-wires up the `scratch/` workspace, and scaffolds or audits the target's
-repo-root `AGENTS.md`. It does **not** install itself into the target.
+repository (this one) and copies the *other* seven skills into a target
+repo, wires up the `scratch/` workspace, and scaffolds or audits the
+target's repo-root `AGENTS.md`. It does **not** install itself into the
+target.
 
 ## The AGENTS.md contract
 
-The five worker skills contain **no repository-specific knowledge**. They
+The seven worker skills contain **no repository-specific knowledge**. They
 are identical in every repo. Everything repo-specific — build commands, test
 commands and filter syntax, toolchain pins, code style, architectural
 invariants, commit trailers — lives in a single **`AGENTS.md` at the target
@@ -65,17 +67,17 @@ You are a **setup engineer**. That means:
 2. **`git_mode`** *(optional)* — `include` or `exclude`. See "Git Mode"
    below. If the user did not state it, **ask** before writing anything.
 
-3. **Canonical source** *(implicit)* — the five sibling skill directories
+3. **Canonical source** *(implicit)* — the seven sibling skill directories
    next to this one. Resolve:
    - `SKILLS_SOURCE` = the parent directory of this `dev-setup` skill
      directory (it contains `dev-request/`, `dev-report/`, `dev-plan/`,
-     `dev-do/`, `dev-review/`).
+     `dev-do/`, `dev-review/`, `dev-issue/`, `dev-pr-open/`).
    - `BASE_ROOT` = `git -C <SKILLS_SOURCE> rev-parse --show-toplevel` when
      that succeeds; otherwise `SKILLS_SOURCE` with a trailing
      `.github\skills` stripped.
    - `TEMPLATE` = `<BASE_ROOT>\templates\AGENTS.template.md`.
-   Confirm all five source skill directories exist; stop if any are missing.
-   `dev-setup` itself is **never** copied into the target.
+   Confirm all seven source skill directories exist; stop if any are
+   missing. `dev-setup` itself is **never** copied into the target.
 
 ## Git Mode
 
@@ -140,6 +142,8 @@ ever hides what this skill installed:
 /.github/skills/dev-plan/
 /.github/skills/dev-do/
 /.github/skills/dev-review/
+/.github/skills/dev-issue/
+/.github/skills/dev-pr-open/
 
 # Local scratch workspace for dev-* skills (local only)
 /scratch/
@@ -169,7 +173,7 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    git repo, or if it is the canonical source repo.
 
 2. **Resolve the canonical source.** Compute `SKILLS_SOURCE`, `BASE_ROOT`,
-   and `TEMPLATE` as described under Inputs. Confirm the five skill
+   and `TEMPLATE` as described under Inputs. Confirm the seven skill
    directories exist.
 
 3. **Settle the git mode.** Use `git_mode` if given; otherwise ask. Detect a
@@ -178,14 +182,33 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    the user the current mode as part of the question so they can simply
    confirm it.
 
-4. **Copy the five skills into the target (overwrite).** Copy each of the
-   five `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
+3.5. **Settle the GitHub integration.** Ask this in **both** git modes, and
+   **default to no**:
+
+   > *"Should the `dev-*` loop be able to publish requests, reports, and
+   > plans as GitHub issues, and open PRs? (default: no)"*
+
+   - Record the answer as `Enabled: yes` or `Enabled: no` in step 8. On
+     `no`, fill **every other row** in the block with `n/a`. The section is
+     written **either way**, so a user who declines today can discover the
+     feature and flip it later without re-running this skill.
+   - `exclude` mode is a statement about **file visibility**, not about
+     permission to file issues. A user who keeps the skills local may still
+     want the loop to publish issues, and a user who tracks the skills may
+     not. Never infer one answer from the other.
+   - This answer gates step 7's GitHub detection: when the answer is `no`,
+     skip that detection entirely rather than resolving values nobody asked
+     for.
+
+4. **Copy the seven skills into the target (overwrite).** Copy each of the
+   seven `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
    replacing any existing copy. Do **not** copy `dev-setup`.
 
    ```powershell
    $skillsDir = Join-Path $TARGET '.github\skills'
    New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
-   foreach ($s in 'dev-request','dev-report','dev-plan','dev-do','dev-review') {
+   foreach ($s in 'dev-request','dev-report','dev-plan','dev-do',
+                  'dev-review','dev-issue','dev-pr-open') {
      Copy-Item -Recurse -Force (Join-Path $SKILLS_SOURCE $s) $skillsDir
    }
    ```
@@ -247,6 +270,37 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    - **Existing guidance files** — `AGENTS.md`, `CLAUDE.md`, `README.md`,
      `CONTRIBUTING.md`, `.github/copilot-instructions.md`.
 
+   **GitHub detection — only when step 3.5 answered yes.** Skip all of this
+   when the answer was no.
+
+   - **Target repository.** Resolve `owner/repo` from
+     `git -C <TARGET> remote get-url origin`, handling both
+     `git@<host>:<owner>/<repo>.git` and
+     `https://<host>/<owner>/<repo>` with an optional `.git` suffix, and
+     **confirm the parsed value with the user** before recording it. Do
+     **not** use a bare `gh repo view` for this: inside a fork it resolves
+     to the *upstream*, which is the exact hazard `--repo` exists to prevent
+     everywhere else.
+   - **Label mapping.** This step is the **sole home of the stock-label
+     defaults**. `dev-setup` is exempt from the repo-agnostic rule that
+     binds the worker skills, so it may carry an opening proposal:
+     `enhancement` for a feature request, `bug` for a bug report, and
+     `documentation` as the additive docs-only label. That is a
+     **proposal, not a value**: reconcile it against
+     `gh label list --repo <owner/repo>` and confirm before recording. The
+     repository's real taxonomy wins over the stock names every time — a
+     repo that uses `kind/bug` records `kind/bug`.
+   - **Changelog.** Detect a changelog from the same candidate list
+     `dev-pr-open` uses: `CHANGELOG.md`, `CHANGES.md`, `docs/CHANGELOG.md`,
+     a `.changeset/` directory, a `changelog.d/` directory. Propose what you
+     find, confirm it, and record both the file and a one-line description
+     of its entry format. `none` is a valid, final answer.
+   - **Draft-PR policy.** Ask whether pull requests should open as drafts.
+   - **When `gh` is missing or unauthenticated**, leave the affected rows as
+     `{TBD: ...}` and surface them in your report rather than guessing.
+     `dev-issue` handles an unresolved row by asking with a live label
+     list, so a `{TBD}` here is recoverable, not fatal.
+
 8. **Scaffold or audit `<TARGET>\AGENTS.md`.**
 
    **If it does not exist** — this is the common case for a fresh repo:
@@ -257,8 +311,11 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      (recommended)** and **local**. In `include` mode it is always tracked;
      do not ask.
    - Copy `TEMPLATE` to `<TARGET>\AGENTS.md` and fill every `{TBD: ...}`
-     marker from step 7. If `TEMPLATE` is missing, author the file directly
-     with the sections listed under "Required AGENTS.md sections" below.
+     marker from step 7 — including every row inside the
+     `## GitHub Integration` sentinel block, from step 3.5's answer and
+     step 7's GitHub detection. If `TEMPLATE` is missing, author the file
+     directly with the sections listed under "Required AGENTS.md sections"
+     below.
    - Leave a `{TBD: <what to find>}` marker only for something you genuinely
      could not determine, and list every remaining marker in your report. A
      marker is a visible request for input; a plausible-looking invented
@@ -268,29 +325,53 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    - Read it and check it against the required section list.
    - Report which required sections are missing or empty, and which recorded
      commands you could not corroborate from the repo's build metadata.
+   - **If the `## GitHub Integration` section is absent**, offer to append
+     **only** the sentinel block, filled from step 3.5 and step 7, leaving
+     the rest of the file untouched. Reproduce the opener and closer exactly
+     as defined in `templates/AGENTS.template.md`, which is the normative
+     source for both strings:
+
+     ```markdown
+     <!-- >>> dev-* github integration (managed by dev-* skills) >>> -->
+     <!-- <<< dev-* github integration (managed by dev-* skills) <<< -->
+     ```
+
+     These are **not** the ignore-file sentinels above: different strings,
+     a different comment syntax, and a different file. Never substitute one
+     pair for the other.
+   - **If the section exists and its `Repository` row disagrees with the
+     target's own `origin` remote**, report it as a finding. A forked repo
+     inherits the upstream's tracked `AGENTS.md`, so this is the expected
+     symptom of a fork — and publishing to the upstream is the worst outcome
+     the integration can produce.
    - Offer to append the missing sections (pre-filled from step 7) and to
      correct anything demonstrably stale. Make no edit to an existing
      `AGENTS.md` without the user's go-ahead.
 
 9. **Verify.** Confirm and report pass/fail for each:
-   - All five `SKILL.md` files are present under `<TARGET>\.github\skills\`.
+   - All seven `SKILL.md` files are present under
+     `<TARGET>\.github\skills\`.
    - The sentinel block exists exactly once, in the file the mode requires,
      and not in the other one.
-   - `exclude` mode: `git -C <TARGET> check-ignore -q .github/skills/dev-do`
-     and `... scratch` both exit 0.
+   - `exclude` mode: the ignore block **names all seven** skill directories,
+     and `git -C <TARGET> check-ignore -q .github/skills/dev-do` and
+     `... scratch` both exit 0.
    - `include` mode: `git -C <TARGET> check-ignore -q scratch` exits 0, and
      `... .github/skills/dev-do` exits non-zero (it must *not* be ignored).
    - `git -C <TARGET> status --porcelain` matches the mode: in `exclude`
      mode nothing new appears under `.github/skills/dev-*/` or `scratch/`;
-     in `include` mode the five skill directories appear as untracked and
+     in `include` mode the seven skill directories appear as untracked and
      ready to stage.
+   - The `## GitHub Integration` sentinel block appears **exactly once** in
+     `<TARGET>\AGENTS.md`, with an `Enabled` row matching step 3.5's answer.
    - `git -C <TARGET> diff --cached --quiet` exits 0 — you staged nothing.
    - `<TARGET>\AGENTS.md` exists, and its remaining `{TBD` markers are
      listed.
 
 10. **Report back.** State: the resolved `TARGET`; the git mode and which
-    file received the rules (plus any mode migration); the five skills
-    copied; the `AGENTS.md` outcome (created / audited) with every
+    file received the rules (plus any mode migration); the seven skills
+    copied; the GitHub integration answer and every value recorded for it;
+    the `AGENTS.md` outcome (created / audited) with every
     outstanding `{TBD}`; a compact summary of the detected stack; and the
     **next step** — *start a fresh Copilot CLI session in the target repo*
     so `.github/skills/` is auto-discovered and the skills load. Confirm
@@ -316,6 +397,7 @@ list both to fill the template and to audit an existing file.
 | Architectural invariants | Decisions whose violation is a review Blocker. |
 | Commit conventions | Types, subject style, and required trailers verbatim. |
 | Scratch / slot convention | The `scratch/<MMDD>-<##>/` layout and that it is ignored. |
+| GitHub Integration *(conditional)* | Whether the integration is on; and when on, the target repository, the resolved label mapping, the changelog location and format, and whether PRs open as drafts. |
 | Agent guardrails | "Never invent a command", plus repo-specific rules. |
 
 Two rules for the content itself:
@@ -326,6 +408,14 @@ Two rules for the content itself:
 - **Record the anti-conventions too.** "`var` is idiomatic here, do not
   raise findings about it" prevents as much wasted review as a positive rule
   does.
+
+And one rule for the conditional section: **the audit must not report
+`## GitHub Integration` as missing or empty when its `Enabled` row says
+`no`.** A declined repository is a *resolved* repository, and nagging it on
+every re-run is exactly the behavior the off-by-default design exists to
+avoid. The only thing the audit reports about a declined section is a
+`Repository` row that disagrees with the target's `origin` remote — and
+when `Enabled` is `no` there is no such row to disagree.
 
 ## Important Rules
 
@@ -341,7 +431,7 @@ Two rules for the content itself:
 - **Idempotent.** Re-running must not duplicate rules and must cleanly
   refresh the copied skills. The sentinel block is what makes that possible;
   always write it.
-- **Never copy `dev-setup` into the target.** Only the five worker skills
+- **Never copy `dev-setup` into the target.** Only the seven worker skills
   are installed. `dev-setup` lives solely in the canonical source.
 - **`AGENTS.md` is the deliverable.** The copy step is mechanical; the
   `AGENTS.md` step is the one that determines whether the loop works. Spend
