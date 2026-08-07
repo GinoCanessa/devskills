@@ -1,6 +1,6 @@
 ---
 name: dev-review
-description: "Performs a two-track code-quality and QA review in the role of a staff-level Engineering Lead and a staff-level QA Lead, then synthesizes both critiques into a single `analysis.md` suitable to hand back to the engineering team. USE FOR: pre-PR self-review, post-`dev-do` quality gates, ad-hoc deep reviews of a change set. Accepts either a full path to the analysis file or a short slot number that expands to `scratch/[MMDD]-[##]/analysis.md`. Optional `max_subagents` (default 3) caps parallel sub-agent fan-out. Engineering review covers antipatterns, unoptimized hot paths, consistency errors, dead code, and design issues; QA review covers test coverage, edge cases, regression risk, and verifiability. Read-only with respect to the codebase — never modifies source, never commits, never pushes. Pairs with `dev-request`/`dev-report` (capture the ask), `dev-plan` (fold findings back into a plan), and `dev-do` (execute the remediation)."
+description: "Performs a two-track code-quality and QA review in the role of a staff-level Engineering Lead and a staff-level QA Lead, then synthesizes both critiques into a single `analysis.md` suitable to hand back to the engineering team. USE FOR: pre-PR self-review, post-`dev-do` quality gates, ad-hoc deep reviews of a change set. Accepts either a full path to the analysis file or a short slot number that expands to `scratch/[MMDD]-[##]/analysis.md`. Optional `max_subagents` (default 3) caps parallel sub-agent fan-out. Engineering review covers antipatterns, unoptimized hot paths, consistency errors, dead code, and design issues; QA review covers test coverage, edge cases, regression risk, and verifiability. Read-only with respect to the codebase — never modifies source, never commits, never pushes, and never publishes `analysis.md` to GitHub. Pairs with `dev-request`/`dev-report` (capture the ask), `dev-plan` (fold findings back into a plan), `dev-do` (execute the remediation), `dev-issue` (publish the request or report, never this analysis), and `dev-pr-open` (push and open the PR)."
 ---
 
 # Dev Review Skill
@@ -228,6 +228,7 @@ mis-scoping before any expensive work happens.
 | | |
 |-|-|
 | Slot | `scratch/<MMDD>-<##>/` (or full path) |
+| Issue | [#N](<url>) — or `not published` |
 | Scope | {label + concrete description, e.g., `plan-slot` (3 commits, 14 files)} |
 | Status | Draft / Ready-for-team |
 | Created | {YYYY-MM-DD} |
@@ -316,6 +317,12 @@ How these findings re-enter the loop:
 - **Medium** — fix now if the change is still in flight, otherwise
   record as a follow-up.
 - **Low / Nit** — record and move on. Do not block on these.
+- **Never to GitHub.** This analysis is an internal artifact and is
+  never published as an issue, a comment, or a quotation. Findings
+  re-enter the loop as a new `dev-request` / `dev-report`, which get
+  their own issue.
+- **After a clean analysis**, `dev-pr-open` is the recommended next
+  step — a recommendation, not a gate.
 - {Name the concrete next action here, e.g., "Run `dev-plan` on
   `scratch/0423-02/` to add remediation phases for B1 and H2."}
 
@@ -367,6 +374,16 @@ against a slot whose `analysis.md` already exists:
 - **Read-only.** This skill never modifies source, never stages,
   never commits, never pushes. The only file it writes is
   `analysis.md` (and the parent directory if missing).
+- **`analysis.md` is never published to GitHub.** Not as an issue, not
+  as a comment, not as a quotation in a PR body. It is an internal
+  artifact. Findings re-enter the loop as a new `dev-request` /
+  `dev-report`, which get their own issue via `dev-issue`.
+- **Populate the `Issue` row, never invent it.** Read it from the
+  sibling `plan.md`, or from the source artifact when no plan exists,
+  under the same **no-downgrade ratchet** the other skills use: never
+  replace an existing `#N` with `not published`. Report a disagreement
+  rather than resolving it — that belongs to `dev-issue` under its
+  § *The Issue Binding*. This skill never calls a writing `gh` command.
 - **Two independent passes, then synthesize.** Do not skip a pass
   because "the other one will catch it". Do not let one pass see
   the other's draft before synthesis.

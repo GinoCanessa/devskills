@@ -1,6 +1,6 @@
 ---
 name: dev-plan
-description: "Builds and iterates on a detailed implementation plan in the role of a staff-level Engineering Lead, working from either a `featurerequest.md` (from `dev-request`) or a `bugreport.md` (from `dev-report`). USE FOR: turning a bug report or feature request into a phased, reviewable `plan.md`; refining or answering questions on an existing plan. Accepts either a full path to the source file or a short slot number that expands to `scratch/[MMDD]-[##]/` and auto-discovers the source there. The source request file is read-only. Plan output is written to `plan.md` in the same directory. Pairs with `dev-do` (execute the plan) and `dev-review` (review the result)."
+description: "Builds and iterates on a detailed implementation plan in the role of a staff-level Engineering Lead, working from either a `featurerequest.md` (from `dev-request`) or a `bugreport.md` (from `dev-report`). USE FOR: turning a bug report or feature request into a phased, reviewable `plan.md`; refining or answering questions on an existing plan. Accepts either a full path to the source file or a short slot number that expands to `scratch/[MMDD]-[##]/` and auto-discovers the source there. The source request file is read-only. Plan output is written to `plan.md` in the same directory. Pairs with `dev-do` (execute the plan), `dev-review` (review the result), `dev-issue` (publish the plan to its GitHub issue), and `dev-pr-open` (push and open the PR)."
 ---
 
 # Dev Plan Skill
@@ -82,6 +82,14 @@ needs editing, **tell the user** and recommend they re-invoke
    justification or — if the choice materially changes the work — ask
    the user before writing the plan.
 6. **Draft / revise `plan.md`** using the format below.
+6.5. **Propagate the `Issue` binding — as a ratchet, not an overwrite.**
+   Copy a `#N` value from the source artifact into the plan's `Issue`
+   row. **Never downgrade an existing `#N` in `plan.md` to
+   `not published`.** If the source says `not published` while
+   `plan.md` already names `#N`, leave `plan.md` alone and report the
+   disagreement for `dev-issue` to resolve. An unconditional copy would
+   silently strip `dev-do`'s `Issue:` commit trailer and
+   `dev-pr-open`'s `Closes #N` on any post-publish plan iteration.
 7. **Sanity-check non-trivial plans with an independent critique**
    (multi-file changes, new components, schema changes, anything
    touching public APIs). Use the `rubber-duck` agent, or a registered
@@ -92,6 +100,18 @@ needs editing, **tell the user** and recommend they re-invoke
    what changed as a result.
 8. **Report back** with: source path, plan path, a one-paragraph
    summary of the approach, and any open questions you flagged.
+9. **Offer the GitHub hand-off, when it applies.** Only when the plan
+   has reached `Ready-to-execute` **and** `AGENTS.md` has a
+   `## GitHub Integration` section whose `Enabled` row says `yes`:
+   - **Slot is bound** (`Issue` names `#N`) — close your report with
+     *"Plan is Ready-to-execute. Attach it to #N? (`dev-issue
+     <slot>`)"*.
+   - **Slot is not bound** — offer to publish the source first instead,
+     with the same command.
+
+   Both are offers; declining is normal and changes nothing. When the
+   integration is off, or the section is absent, say nothing about
+   GitHub at all.
 
 ## Plan Format
 
@@ -102,6 +122,7 @@ needs editing, **tell the user** and recommend they re-invoke
 |-|-|
 | Slot | `scratch/<MMDD>-<##>/` (or full path) |
 | Source | `featurerequest.md` / `bugreport.md` (read-only) |
+| Issue | [#N](<url>) — or `not published` |
 | Status | Draft / Ready-to-execute / In-progress / Complete / Blocked |
 | Created | {YYYY-MM-DD} |
 | Last updated | {YYYY-MM-DD} |
@@ -249,6 +270,12 @@ When `plan.md` already exists:
 - **Source is read-only.** Never write to `featurerequest.md` or
   `bugreport.md`. If they need changes, recommend re-invoking the
   authoring skill.
+- **Never write a `#N` you did not read from the source artifact.** The
+  `Issue` row propagates under a **no-downgrade ratchet**: an existing
+  `#N` in `plan.md` is never replaced with `not published`. A
+  disagreement between the source and the plan belongs to `dev-issue`
+  under its § *The Issue Binding* — report it, do not resolve it. This
+  skill never calls a writing `gh` command.
 - **Today's date governs slot expansion.** Never reuse a previous day's
   `<MMDD>` for a numeric slot. For an earlier slot, the user must give
   a full path.
