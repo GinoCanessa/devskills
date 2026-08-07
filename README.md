@@ -5,13 +5,18 @@ inner-loop workflow for local development:
 
 ```
 dev-request  ─┐
-              ├─→  dev-plan  ─→  dev-do  ─→  dev-review
-dev-report   ─┘                    ↑             │
+              ├─→  dev-plan  ─→  dev-do  ─→  dev-review  ─→  dev-pr-open
+dev-report   ─┘                    ↑             │             (opt-in)
                                    └─────────────┘
                                    (findings fold back into the plan)
 ```
 
-`dev-setup` is the installer that copies the other five into a target repo.
+`dev-issue` (opt-in) is a side branch off the authoring skills: it publishes
+a `featurerequest.md` or `bugreport.md` as a GitHub issue, binds the slot to
+it, and can later attach the finished `plan.md` as a managed comment.
+`dev-pr-open` is the terminal step that pushes the branch and opens the PR.
+
+`dev-setup` is the installer that copies the other seven into a target repo.
 
 ## The skills
 
@@ -22,21 +27,24 @@ dev-report   ─┘                    ↑             │
 | `dev-plan` | Staff-level Eng Lead | a request or report | `scratch/<MMDD>-<##>/plan.md` |
 | `dev-do` | Staff-level Engineer | `plan.md` | source code + local commits |
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
+| `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
+| `dev-pr-open` *(opt-in)* | Release engineer | a slot's committed work | a pushed branch, a PR, a changelog entry |
 | `dev-setup` | Setup engineer | a target repo | installed skills + `AGENTS.md` |
 
 Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
-`dev-do` commits locally and **never pushes or opens a PR**.
+`dev-do` commits locally and **never pushes or opens a PR** — `dev-pr-open`
+is the only skill permitted to do either.
 
 ## The AGENTS.md contract
 
-The five worker skills carry **no repository-specific knowledge**. They are
+The seven worker skills carry **no repository-specific knowledge**. They are
 byte-identical in every repo they are installed into.
 
 Everything repo-specific — build commands, test commands and filter syntax,
-toolchain pins, code style, architectural invariants, commit trailers —
-lives in a single **`AGENTS.md` at the target repository root**. Every
-worker skill reads it before naming a command, and none of them may invent
-one.
+toolchain pins, code style, architectural invariants, commit trailers, and
+the entire GitHub integration below — lives in a single **`AGENTS.md` at the
+target repository root**. Every worker skill reads it before naming a
+command, and none of them may invent one.
 
 This is what makes the skills portable: to change how the loop behaves in a
 repo, edit that repo's `AGENTS.md`. To change how the loop behaves
@@ -58,12 +66,17 @@ dev-setup C:\ai\git\some-repo
 `dev-setup` will:
 
 1. Ask whether the setup should be **included in** or **excluded from** git.
-2. Copy the five worker skills into `<target>/.github/skills/`.
-3. Write ignore rules into a sentinel block — `.git/info/exclude` when
+2. Ask whether the opt-in **GitHub integration** should be enabled
+   (default: no), and — when it is — resolve the target repository, the
+   label mapping, the changelog location and format, and whether PRs open
+   as drafts.
+3. Copy the seven worker skills into `<target>/.github/skills/`.
+4. Write ignore rules into a sentinel block — `.git/info/exclude` when
    excluded, `.gitignore` when included.
-4. Create `<target>/scratch/`.
-5. Detect the target's stack and scaffold `<target>/AGENTS.md` from
-   `templates/AGENTS.template.md`, or audit an existing one.
+5. Create `<target>/scratch/`.
+6. Detect the target's stack and scaffold `<target>/AGENTS.md` from
+   `templates/AGENTS.template.md`, or audit an existing one — including its
+   `## GitHub Integration` section, which is written either way.
 
 It is idempotent, and it **never stages, commits, or pushes**.
 
@@ -104,10 +117,42 @@ Then the loop is:
 
 ```
 dev-request 1        # or: dev-report 1
+dev-issue 1          # optional: publish it as an issue, bind the slot
 dev-plan 1
+dev-issue 1          # optional: attach the finished plan as a comment
 dev-do 1
 dev-review 1
+dev-pr-open 1        # push the branch, open the PR
 ```
 
 `1` is a slot number; it expands to `scratch/<MMDD>-01/` using today's date.
 Every skill also accepts a full path if you need a previous day's slot.
+
+`dev-issue` and `dev-pr-open` do nothing unless the GitHub integration is
+enabled — see below.
+
+## GitHub integration (opt-in)
+
+**Off by default.** A repo whose `AGENTS.md` has no `## GitHub Integration`
+section — which is every repo that predates this feature — behaves exactly
+as it always has. So does a repo whose section says `Enabled: no`.
+
+Turn it on when `dev-setup` asks. Everything it needs is then recorded in a
+sentinel-delimited block in the target's `AGENTS.md`: the repository, the
+label mapping, the changelog file and entry format, and whether PRs open as
+drafts. Nothing about your repository lives in a skill.
+
+When it is on:
+
+- `dev-issue` publishes a `featurerequest.md` or `bugreport.md` as a GitHub
+  issue, keeps it in sync as you refine the artifact, and can attach a
+  finalized `plan.md` as a single managed comment. It writes an `Issue` row
+  into the slot's artifacts, which every later skill carries forward.
+- `dev-do` adds an `Issue: #N` trailer to its phase commits.
+- `dev-pr-open` pushes the branch, adds a changelog entry when the repo has
+  one, and opens a PR that references the bound issue so merging closes it.
+
+Guardrails worth knowing: every write is confirmed with you in the moment,
+`analysis.md` is **never** published, the recorded repository is
+cross-checked against `origin` before any write, and `dev-pr-open` refuses
+to run when `HEAD` is the default branch.

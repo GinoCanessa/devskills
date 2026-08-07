@@ -19,12 +19,13 @@ application code: it is a documentation repository whose artifacts are
 markdown skill definitions that get copied into *other* repositories by
 `dev-setup`.
 
-The framing fact that settles arguments here: **the five worker skills must
-contain zero repository-specific knowledge.** Anything that varies between
-repositories belongs in that repository's own `AGENTS.md`, not in a skill.
-If a proposed edit to `dev-do`, `dev-plan`, `dev-review`, `dev-request`, or
-`dev-report` mentions a concrete build command, a project name, a language,
-or a framework as anything other than a neutral example, it is wrong.
+The framing fact that settles arguments here: **the seven worker skills
+must contain zero repository-specific knowledge.** Anything that varies
+between repositories belongs in that repository's own `AGENTS.md`, not in a
+skill. If a proposed edit to `dev-do`, `dev-plan`, `dev-review`,
+`dev-request`, `dev-report`, `dev-issue`, or `dev-pr-open` mentions a
+concrete build command, a project name, a language, or a framework as
+anything other than a neutral example, it is wrong.
 
 `dev-setup` is the one exception: it is the installer, so it legitimately
 knows about stacks, detection heuristics, and git plumbing.
@@ -41,6 +42,8 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-plan/` | Eng Lead role — authors `plan.md`. |
 | `.github/skills/dev-do/` | Engineer role — executes `plan.md`, commits locally. |
 | `.github/skills/dev-review/` | Eng Lead + QA Lead roles — authors `analysis.md`. |
+| `.github/skills/dev-issue/` | GitHub issue writer — sole writer of issues and of the `Issue` binding row; owns the Resolve-and-Record Protocol. |
+| `.github/skills/dev-pr-open/` | Push + PR — the only skill permitted to do either. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target repo. |
 | `scratch/` | Local feature requests / plans / analyses (**ignored**). |
 
@@ -82,12 +85,13 @@ change to a skill done:
    }
    ```
 
-2. **No repo-specific leakage** in the five worker skills. This must return
-   nothing:
+2. **No repo-specific leakage** in the worker skills. The glob form covers
+   skills added later automatically; `dev-setup` is excluded because this
+   file exempts the installer. This must return nothing:
 
    ```powershell
-   Get-ChildItem .github\skills\dev-request,.github\skills\dev-report,
-     .github\skills\dev-plan,.github\skills\dev-do,.github\skills\dev-review -Recurse -File |
+   Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+     Get-ChildItem -Recurse -File |
      Select-String -Pattern 'FhirTx|MeetingAssistant|dotnet-fhir-tx|meeting-assistant'
    ```
 
@@ -99,6 +103,44 @@ change to a skill done:
 4. **Real-world check.** For a non-trivial change, run `dev-setup` against a
    throwaway `git init` repo in both `include` and `exclude` mode and
    confirm the verification list in step 9 of that skill passes.
+
+5. **No baked-in target repository.** No worker skill hardcodes a GitHub
+   repository; every `--repo` argument is an `<angle-bracket>` placeholder.
+   This must return nothing:
+
+   ```powershell
+   Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+     Get-ChildItem -Recurse -File |
+     Select-String -Pattern '--repo\s+(?!<)'
+   ```
+
+   Paired **inspection**, deliberately not a command: every `gh` invocation
+   that *writes* — `issue create`, `issue edit`, `issue comment`,
+   `pr create`, `api … --method` — passes `--repo`, or carries
+   `<owner>/<repo>` in the `gh api` path, sourced from the `Repository` row
+   of the target's `## GitHub Integration` section. This half is not a
+   regex because any mechanical pattern for it also matches the skills' own
+   prohibition prose — a line reading "never a bare `gh issue create`" —
+   and would therefore fail permanently.
+
+6. **No label names in worker skills.** The stock-label defaults live only
+   in `dev-setup`. This must return nothing:
+
+   ```powershell
+   Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+     Get-ChildItem -Recurse -File |
+     Select-String -Pattern '`(enhancement|bug|documentation)`'
+   ```
+
+   Two design points a reader will otherwise undo. The **backtick
+   anchoring** is load-bearing: a bare `documentation` matches `dev-do`'s
+   existing "source, tests, documentation, configuration" line and would
+   fail forever, while the backtick-quoted label form returns clean.
+   Artifact vocabulary — `bugreport.md`, "bug report" — is unaffected
+   because it is never backtick-quoted as a bare word. And **`dev-setup` is
+   excluded** because this file already exempts the installer; it is the
+   sole home of the stock-label proposal, which it reconciles against
+   `gh label list` before recording.
 
 ---
 
@@ -143,7 +185,8 @@ Markdown, authored for a model to read.
 These are decisions, not preferences. Violating one is a review Blocker.
 
 - **Worker skills are repo-agnostic.** See "What this repository is". The
-  five worker skills must be safe to copy byte-for-byte into any repository.
+  seven worker skills must be safe to copy byte-for-byte into any
+  repository.
 - **`AGENTS.md` is the only repo-specific channel.** A worker skill that
   needs repository knowledge must instruct the agent to *read `AGENTS.md`*,
   with a documented fallback to `README.md` / `CONTRIBUTING.md` and an
@@ -156,7 +199,11 @@ These are decisions, not preferences. Violating one is a review Blocker.
   `dev-request`, `bugreport.md` → `dev-report`, `plan.md` → `dev-plan`
   (created) and `dev-do` (updated), `analysis.md` → `dev-review`. No skill
   writes another's file. `dev-plan` and `dev-do` treat the source request as
-  read-only.
+  read-only. The `Issue` binding row is the one value that appears in all
+  four artifacts: whichever skill authors a file propagates the row into it
+  under the **no-downgrade ratchet** — an existing `#N` is never replaced
+  with `not published` — and only `dev-issue` resolves a disagreement
+  between two artifacts.
 - **`dev-review` is read-only** with respect to the codebase. It writes
   `analysis.md` and nothing else.
 - **`dev-do` commits locally, never pushes, never opens a PR.** Its
@@ -164,9 +211,29 @@ These are decisions, not preferences. Violating one is a review Blocker.
   entry → path-limited commit → identity check → `COMMIT` log entry) is a
   safety mechanism. Do not loosen a step without replacing the guarantee it
   provides.
+- **`AGENTS.md` writes are sentinel-scoped.** A worker skill may write
+  `AGENTS.md` only inside the `dev-* github integration` sentinel block
+  defined in `templates/AGENTS.template.md`, only as part of the prompt
+  that resolved the value, and never staged.
+- **`dev-issue` is the sole GitHub-issue writer** and the sole writer of an
+  `Issue` binding *value*. `dev-request` / `dev-report` stamp the row only
+  at seed time, and no skill ever downgrades a `#N` to `not published`.
+- **`dev-pr-open` is the only skill permitted to `git push`, to open a PR,
+  or to commit outside `dev-do`'s phase protocol** — and its single commit
+  is path-limited to the resolved changelog file and requires explicit
+  approval. `dev-do`'s prohibition is unchanged and is not to be relaxed.
+- **The integration is off by default.** An absent `## GitHub Integration`
+  section, or one whose `Enabled` row says `no`, means off — and
+  `analysis.md` is never published.
+- **No worker skill names a GitHub label.** The stock-label defaults live
+  only in `dev-setup`, which this file already exempts as the installer.
+  `dev-issue` reads the mapping from the target's `AGENTS.md`; a "missing
+  label" is a *recorded* label that no longer exists on the repository, so
+  the name it offers to create comes from `AGENTS.md`, never from a skill.
+  Guarded by § *Test* check 6.
 - **`dev-setup` never stages, commits, or pushes,** and never edits a shared
   `.gitignore` in `exclude` mode.
-- **`dev-setup` is never installed into a target repo.** Only the five
+- **`dev-setup` is never installed into a target repo.** Only the seven
   worker skills are.
 
 ---
@@ -185,6 +252,10 @@ These are decisions, not preferences. Violating one is a review Blocker.
   ```
 
 - One logical change per commit.
+- **`dev-do` adds a conditional `Issue: #N` trailer** alongside the two
+  required above, when — and only when — the plan's `Issue` row names `#N`.
+  An unbound slot, or a row reading `not published`, produces exactly the
+  message it produced before that trailer existed.
 - Agents **do not push** and **do not open pull requests** unless the user
   explicitly asks.
 
