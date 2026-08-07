@@ -156,8 +156,60 @@ These are decisions, not preferences. Violating one is a review Blocker.
   Scope is {TBD: optional but encouraged / required / unused}.
 - {TBD: required commit trailers, verbatim}
 - One logical change per commit.
+- When the GitHub integration below is on **and** the slot carries an
+  `Issue` binding, `dev-do` adds an `Issue: #N` trailer to each phase
+  commit, in addition to every trailer required above. When the
+  integration is off or the slot is unbound, nothing is added.
 - Agents **do not push** and **do not open pull requests** unless the user
   explicitly asks.
+
+---
+
+## GitHub Integration
+
+**Off by default, in two independent ways.** A repository whose
+`AGENTS.md` has **no** `## GitHub Integration` section is off. A section
+whose `Enabled` row says **`no`** is equally off. In either case no skill
+prompts about GitHub, and the `dev-*` loop behaves exactly as it did
+before this feature existed.
+
+The block below is **machine-managed**. This section is the **normative
+definition** of both sentinel strings: every skill that reads or writes
+the block reproduces the opener and the closer byte-for-byte from here,
+and no skill re-derives, paraphrases, or reformats them.
+
+<!-- >>> dev-* github integration (managed by dev-* skills) >>> -->
+| Setting | Value |
+|-|-|
+| Enabled | {TBD: yes / no} |
+| Repository | {TBD: owner/repo, or n/a} |
+| Label — feature request | {TBD: e.g. `enhancement`, or n/a} |
+| Label — bug report | {TBD: e.g. `bug`, or n/a} |
+| Label — docs-only (additive) | {TBD: e.g. `documentation`, or n/a} |
+| Changelog file | {TBD: path, `none`, or n/a} |
+| Changelog entry format | {TBD: one-line description, or n/a} |
+| PR opens as draft | {TBD: yes / no, or n/a} |
+<!-- <<< dev-* github integration (managed by dev-* skills) <<< -->
+
+**These sentinels are not `dev-setup`'s ignore-file sentinels.** The
+ignore-file block that `dev-setup` maintains in `.gitignore` or
+`.git/info/exclude` is delimited by
+`# >>> dev-* skills (managed by dev-setup) >>>` and
+`# <<< dev-* skills (managed by dev-setup) <<<`. That is a **different
+block in a different file**, with a `#` comment prefix rather than an
+HTML comment. Do not conflate the two, and never substitute one pair for
+the other.
+
+Rules for the block:
+
+- Only `dev-setup`, `dev-issue`, and `dev-pr-open` may rewrite it, and
+  only **in place** — never a second copy, never appended to the end of
+  the file.
+- Hand-written text outside the sentinels is never touched. Everything a
+  human writes in this section survives every rewrite.
+- A recorded value of `no`, `none`, or `n/a` is a **resolved answer**, not
+  a missing one. It must never re-trigger a prompt on a later run.
+- When `Enabled` is `no`, every other row is `n/a`.
 
 ---
 
