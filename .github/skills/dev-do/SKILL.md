@@ -1,6 +1,6 @@
 ---
 name: dev-do
-description: "Executes an implementation plan produced by `dev-plan` in the role of a staff-level Engineer. USE FOR: actually doing the work — writing/modifying code, running builds and tests, committing locally as phases complete, and keeping `plan.md` updated with current status. Accepts either a full path to the plan file or a short slot number that expands to `scratch/[MMDD]-[##]/plan.md`. Optional `max_subagents` (default 3) caps parallel sub-agent fan-out. Optional `checkpoint_every` (default 0 = never) yields back to the user after every N completed phases; the default is to run the entire plan in a single invocation without re-prompting. May commit locally with concise conventional-commit messages, but **must not push and must not open a PR**. The `plan.md` file may be edited but never deleted nor committed. Pairs with `dev-request`/`dev-report` (capture the ask), `dev-plan` (author the plan), and `dev-review` (review the result)."
+description: "Executes an implementation plan produced by `dev-plan` in the role of a staff-level Engineer. USE FOR: actually doing the work — writing/modifying code, running builds and tests, committing locally as phases complete, and keeping `plan.md` updated with current status. Accepts either a full path to the plan file or a short slot number that expands to `scratch/[MMDD]-[##]/plan.md`. Optional `max_subagents` (default 3) caps parallel sub-agent fan-out. Optional `checkpoint_every` (default 0 = never) yields back to the user after every N completed phases; the default is to run the entire plan in a single invocation without re-prompting. Adds a conditional `Issue: #N` commit trailer when the plan's `Issue` row names an issue. May commit locally with concise conventional-commit messages, but **must not push and must not open a PR** — that is `dev-pr-open`'s job. The `plan.md` file may be edited but never deleted nor committed. Pairs with `dev-request`/`dev-report` (capture the ask), `dev-plan` (author the plan), `dev-review` (review the result), `dev-issue` (publish it to GitHub), and `dev-pr-open` (push and open the PR)."
 ---
 
 # Dev Do Skill
@@ -146,7 +146,9 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
 ## Workflow
 
 1. **Resolve the plan path.** Echo it. Read `plan.md` and the sibling
-   source request (read-only) for context.
+   source request (read-only) for context. Reading `plan.md` includes
+   reading its `Issue` row, which decides whether phase commits carry an
+   `Issue: #N` trailer.
 2. **Gate on the plan's top-level status.** Act only as follows:
    - `Draft` — **stop.** The plan is not finished. Tell the user to
      complete it with `dev-plan` first; do not implement it.
@@ -231,6 +233,10 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
       `git commit --only -- <owned-paths>`.
       This path-limited form is mandatory even after staged-scope
       inspection. Include every commit trailer required by `AGENTS.md`.
+      When the plan's `Issue` row names `#N`, append an `Issue: #N`
+      trailer alongside them. When that row says `not published`, or is
+      absent entirely, add nothing — an unbound slot produces exactly
+      the message it produced before this trailer existed.
    9. Immediately verify that the new commit's sole parent equals the
       recorded pre-commit `HEAD`, its tree equals the recorded staged
       tree, and its exact changed-path set equals the recorded list.
@@ -265,7 +271,9 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
    - A reminder that nothing has been pushed and no PR has been
      opened.
    - A suggestion to run `dev-review` against the same slot before
-     opening a PR, when the change is non-trivial.
+     opening a PR, when the change is non-trivial — and then
+     `dev-pr-open` against the same slot when the user is ready to push
+     and open it.
 
 ## Sub-Agent Use
 
@@ -293,8 +301,13 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
   it is two phases — split it in `plan.md` before executing.
 - **Path-limit every phase commit.** Use
   `git commit --only -- <owned-paths>` after staged-tree capture.
+- **Add the `Issue: #N` trailer only when the plan's `Issue` row names
+  `#N`.** It sits alongside the trailers `AGENTS.md` requires, and it
+  has **no** effect on the post-commit identity checks, which compare
+  parent, tree, and changed paths only — never the message.
 - **Never `git push`.** Never `gh pr create`. Never force-push, amend,
   or rewrite history as automatic recovery. Local phase commits only.
+  Pushing and opening a PR belong to `dev-pr-open`.
 
 ## Iteration Mode (Recovery Path)
 
@@ -341,7 +354,13 @@ completion:
 - **`plan.md` is editable, never deletable.** Same for the sibling
   source request.
 - **Source request is still read-only** here, just as in `dev-plan`.
-- **No push, no PR.** Local commits only.
+- **No push, no PR.** Local commits only. That prohibition is
+  unchanged and is not to be relaxed: `dev-pr-open` is the skill that
+  pushes the branch and opens the pull request, and it exists precisely
+  so this rule never has to bend.
+- **The `Issue: #N` trailer is conditional.** It is added when — and
+  only when — the plan's `Issue` row names `#N`. The row itself belongs
+  to `dev-issue`; this skill reads it and never writes it.
 - **Honor repo conventions and verified memories.** Repository
   conventions live in `AGENTS.md`. Read it before naming any build,
   test, or lint command, and follow its code-style rules and
