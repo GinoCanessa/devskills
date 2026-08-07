@@ -28,7 +28,7 @@ it, and can later attach the finished `plan.md` as a managed comment.
 | `dev-do` | Staff-level Engineer | `plan.md` | source code + local commits |
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
-| `dev-pr-open` *(opt-in)* | Release engineer | a slot's committed work | a pushed branch, a PR, a changelog entry |
+| `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
 | `dev-setup` | Setup engineer | a target repo | installed skills + `AGENTS.md` |
 
 Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
@@ -128,6 +128,10 @@ dev-pr-open 1        # push the branch, open the PR
 `1` is a slot number; it expands to `scratch/<MMDD>-01/` using today's date.
 Every skill also accepts a full path if you need a previous day's slot.
 
+`dev-pr-open` is the exception: given no slot it publishes **every local
+commit ahead of the default branch**, spanning as many slots, requests, and
+issues as the branch accumulated, and closing all of them on merge.
+
 `dev-issue` and `dev-pr-open` do nothing unless the GitHub integration is
 enabled — see below.
 
@@ -149,8 +153,9 @@ When it is on:
   finalized `plan.md` as a single managed comment. It writes an `Issue` row
   into the slot's artifacts, which every later skill carries forward.
 - `dev-do` adds an `Issue: #N` trailer to its phase commits.
-- `dev-pr-open` pushes the branch, adds a changelog entry when the repo has
-  one, and opens a PR that references the bound issue so merging closes it.
+- `dev-pr-open` pushes the branch, adds a changelog entry per change when
+  the repo has a changelog, and opens a PR that references every bound
+  issue in scope so merging closes them all.
 
 Guardrails worth knowing: every write is confirmed with you in the moment,
 `analysis.md` is **never** published, the recorded repository is
