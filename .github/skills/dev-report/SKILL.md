@@ -1,6 +1,6 @@
 ---
 name: dev-report
-description: "Drafts and iterates on local-development bug reports in the role of a staff-level Tech Lead. USE FOR: capturing a defect as a structured `bugreport.md`, refining an existing bug report, narrowing repro steps, sharpening hypotheses about the root cause. Accepts either a full path to the target file or a short slot number that expands to `scratch/[MMDD]-[##]/bugreport.md`. Pairs with `dev-request` (features), `dev-plan` (implementation plan from a report), `dev-do` (execute a plan), and `dev-review` (review the result)."
+description: "Drafts and iterates on local-development bug reports in the role of a staff-level Tech Lead. USE FOR: capturing a defect as a structured `bugreport.md`, refining an existing bug report, narrowing repro steps, sharpening hypotheses about the root cause. Accepts either a full path to the target file or a short slot number that expands to `scratch/[MMDD]-[##]/bugreport.md`, and optionally an existing GitHub issue reference to seed the draft from and link to. Pairs with `dev-request` (features), `dev-plan` (implementation plan from a report), `dev-do` (execute a plan), `dev-review` (review the result), `dev-issue` (publish the report to GitHub), and `dev-pr-open` (push and open the PR)."
 ---
 
 # Dev Report Skill
@@ -45,6 +45,33 @@ You are a **staff-level Tech Lead**. That means:
 2. **Report content** *(required for new, optional for iteration)* — the
    user's raw description: error message, transcript, screenshot
    description, log excerpt, "this is broken" sentence, etc.
+3. **Issue reference** *(optional)* — an existing GitHub issue to seed the
+   report from. Accepted in exactly three forms:
+   - `#N`
+   - `gh#N`
+   - a full issue URL, `https://<host>/<owner>/<repo>/issues/<N>`
+
+   Fetch it with:
+
+   ```powershell
+   gh issue view <N> --repo <owner/repo> `
+     --json title,body,labels,url,state
+   ```
+
+   `<owner/repo>` comes from the URL when one was given; otherwise from
+   the `Repository` row of `AGENTS.md`'s `## GitHub Integration` section,
+   falling back to `git remote get-url origin` when the integration is
+   off.
+
+   Map the result: the fetched **title** seeds the document's `#` heading
+   (prefixed `Bug Report: `); the fetched **body** seeds *Summary*;
+   **labels** and **url** go in *Notes*. You still apply Tech Lead
+   judgment — this seeds a draft, it does not paste one.
+
+   This fetch is **not** gated on the GitHub integration. Reading an
+   issue the user explicitly pointed at is not a prompt and not a write.
+   If `gh` is unavailable or the fetch fails, say so and continue with
+   whatever the user supplied; a failed fetch is not a blocker.
 
 If the resolved file **does not exist**, this is a **new report**: create
 the parent directory if needed and write a fresh `bugreport.md`.
@@ -87,6 +114,7 @@ evidence they have.
 | | |
 |-|-|
 | Slot | `scratch/<MMDD>-<##>/` (or full path) |
+| Issue | [#N](<url>) — or `not published` |
 | Status | Draft / Investigating / Ready-for-plan |
 | Severity | Blocker / High / Medium / Low |
 | Created | {YYYY-MM-DD} |
@@ -162,6 +190,42 @@ local dev, or is cosmetic. Whether data is at risk.}
 {Free-form. Links to related tickets, prior fixes, design docs.}
 ```
 
+## GitHub Integration (optional)
+
+**Gate.** If `AGENTS.md` has no `## GitHub Integration` section, or its
+`Enabled` row says `no`, **nothing in this section applies** and this
+skill behaves exactly as it did before the integration existed. The
+issue **fetch** under *Inputs* is deliberately outside this gate — it is
+a read the user explicitly asked for. Only the **stamp** and the
+**offer** below are gated.
+
+### Seed-time stamping
+
+When the slot was seeded from an issue reference **and** the resolved
+`owner/repo` matches the recorded `Repository`, write that number and
+URL into the `Issue` metadata row.
+
+This is a **local metadata write, not a network write**, so it does not
+encroach on `dev-issue`'s ownership of GitHub writes.
+
+When the reference points at a **different** repository — an issue filed
+in a docs repo for work done in a code repo — do **not** stamp it.
+Record the reference in *Notes*, leave `Issue` as `not published`, and
+say why. Stamping a foreign issue number would make the slot permanently
+unpublishable under `dev-issue`'s conflict rule.
+
+### Hand-off offer
+
+When you set `Status` to `Ready-for-plan`, **and** the integration is on,
+**and** the `Issue` row is `not published`, close your report with one
+offer:
+
+> *"Status is Ready-for-plan. Publish this to GitHub? (`dev-issue
+> <slot>`)"*
+
+Declining changes nothing. This skill never calls a writing `gh`
+command itself.
+
 ## Important Rules
 
 - **Repository conventions live in `AGENTS.md`.** Before naming any
@@ -181,7 +245,13 @@ local dev, or is cosmetic. Whether data is at risk.}
 - **Quote evidence verbatim.** Do not "tidy up" stack traces or log
   lines.
 - **Do not modify `featurerequest.md` or `plan.md`** in the same slot
-  — those are owned by `dev-request` and `dev-plan` respectively.
+  — those are owned by `dev-request` and `dev-plan` respectively. The
+  same goes for `analysis.md`, which is owned by `dev-review`.
+- **You write the `Issue` row only at seed time.** After that, the row
+  belongs to `dev-issue`. The **no-downgrade ratchet** applies: never
+  replace an existing `#N` with `not published`. If two sources
+  disagree about the number, do not pick one — the conflict rule lives
+  in `dev-issue` § *The Issue Binding*.
 - **Do not attempt fixes.** Reading code to refine a hypothesis is fine;
   editing code is `dev-do`'s job.
 - **Do not commit.** Files under `scratch/` are gitignored on purpose.
