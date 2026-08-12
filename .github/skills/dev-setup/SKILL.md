@@ -219,6 +219,34 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    them silently: list them in your report and ask whether to keep or remove
    them.
 
+4.5. **Check every copied description against the 1024-character limit.** A
+   skill whose front-matter `description` exceeds **1024 characters** is
+   dropped at session start: it does not load, it does not appear in the
+   agent's skill list, and there is no error message. The install looks
+   like it succeeded and the skill is simply invisible. Measure each one
+   after copying:
+
+   ```powershell
+   foreach ($s in 'dev-request','dev-report','dev-plan','dev-do',
+                  'dev-review','dev-issue','dev-pr-open') {
+     $raw = Get-Content (Join-Path $skillsDir "$s\SKILL.md") -Raw
+     $d = [regex]::Match($raw, '(?m)^description:(.+)$').
+            Groups[1].Value.Trim().Trim('"')
+     '{0,-12} {1,5} {2}' -f $s, $d.Length,
+       $(if ($d.Length -le 1024) { 'ok' } else { 'TOO LONG' })
+   }
+   ```
+
+   Count **characters of the description value**, excluding the
+   `description:` key and the surrounding quotes. The `.Trim().Trim('"')`
+   order matters on CRLF files: trimming the quote first leaves a trailing
+   carriage return that blocks it, inflating every count by two. Report any
+   skill over the limit as a **blocking finding**, name it, and give the
+   overage — then tell the user to shorten the description **in the
+   canonical source** and re-run, because editing the target's copy only
+   survives until the next re-run. Do not shorten a description in the
+   target yourself.
+
 5. **Write the ignore rules** for the settled mode, using the sentinel block
    and the mode-switch rules above. Never edit `.gitignore` in `exclude`
    mode.
@@ -351,6 +379,10 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
 9. **Verify.** Confirm and report pass/fail for each:
    - All seven `SKILL.md` files are present under
      `<TARGET>\.github\skills\`.
+   - Every copied skill's `description` is **≤ 1024 characters** (step 4.5).
+     Report the measured length of each, not just a pass/fail — a skill
+     sitting a few characters under the limit is one edit away from going
+     invisible.
    - The sentinel block exists exactly once, in the file the mode requires,
      and not in the other one.
    - `exclude` mode: the ignore block **names all seven** skill directories,
@@ -433,6 +465,11 @@ when `Enabled` is `no` there is no such row to disagree.
   always write it.
 - **Never copy `dev-setup` into the target.** Only the seven worker skills
   are installed. `dev-setup` lives solely in the canonical source.
+- **A description over 1024 characters makes a skill invisible.** The skill
+  is dropped silently at session start — no error, no entry in the agent's
+  skill list, and an install that looks clean. Measure every copied
+  description, treat an over-limit skill as a blocking finding, and send
+  the fix to the canonical source rather than patching the target's copy.
 - **`AGENTS.md` is the deliverable.** The copy step is mechanical; the
   `AGENTS.md` step is the one that determines whether the loop works. Spend
   your effort there.

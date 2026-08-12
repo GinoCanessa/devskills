@@ -142,6 +142,32 @@ change to a skill done:
    sole home of the stock-label proposal, which it reconciles against
    `gh label list` before recording.
 
+7. **Every `description` is ≤ 1024 characters.** A skill whose front-matter
+   `description` exceeds 1024 characters is dropped silently at session
+   start — it never loads, never appears in the agent's skill list, and
+   raises no error. Because this repo is the canonical source, an
+   over-limit description here propagates to every repo that runs
+   `dev-setup`. This must report `ok` for all eight skills:
+
+   ```powershell
+   Get-ChildItem .github\skills -Directory | ForEach-Object {
+     $raw = Get-Content (Join-Path $_.FullName 'SKILL.md') -Raw
+     $d = [regex]::Match($raw, '(?m)^description:(.+)$').
+            Groups[1].Value.Trim().Trim('"')
+     '{0,-12} {1,5} {2}' -f $_.Name, $d.Length,
+       $(if ($d.Length -le 1024) { 'ok' } else { 'TOO LONG' })
+   }
+   ```
+
+   Count the description **value** only — not the `description:` key and
+   not the surrounding quotes. The `.Trim().Trim('"')` order is
+   load-bearing: these files are CRLF, so the captured group ends with a
+   carriage return, and trimming the quote first leaves both the `\r` and
+   the closing `"` in the count. Treat anything above roughly 1000 as
+   needing a trim before you add to it: the failure is silent, so there is
+   no feedback loop that would catch it later. `dev-setup` runs the same
+   check against the skills it installs.
+
 ---
 
 ## Lint / format
