@@ -100,18 +100,21 @@ needs editing, **tell the user** and recommend they re-invoke
    what changed as a result.
 8. **Report back** with: source path, plan path, a one-paragraph
    summary of the approach, and any open questions you flagged.
-9. **Offer the GitHub hand-off, when it applies.** Only when the plan
-   has reached `Ready-to-execute` **and** `AGENTS.md` has a
-   `## GitHub Integration` section whose `Enabled` row says `yes`:
-   - **Slot is bound** (`Issue` names `#N`) — close your report with
-     *"Plan is Ready-to-execute. Attach it to #N? (`dev-issue
-     <slot>`)"*.
-   - **Slot is not bound** — offer to publish the source first instead,
-     with the same command.
+9. **Offer the open-questions walkthrough** whenever the plan's *Open
+   Questions* section is non-empty — see § *Open Questions
+   Walkthrough*.
+10. **Offer the GitHub hand-off, when it applies.** Only when the plan
+    has reached `Ready-to-execute` **and** `AGENTS.md` has a
+    `## GitHub Integration` section whose `Enabled` row says `yes`:
+    - **Slot is bound** (`Issue` names `#N`) — close your report with
+      *"Plan is Ready-to-execute. Attach it to #N? (`dev-issue
+      <slot>`)"*.
+    - **Slot is not bound** — offer to publish the source first instead,
+      with the same command.
 
-   Both are offers; declining is normal and changes nothing. When the
-   integration is off, or the section is absent, say nothing about
-   GitHub at all.
+    Both are offers; declining is normal and changes nothing. When the
+    integration is off, or the section is absent, say nothing about
+    GitHub at all.
 
 ## Plan Format
 
@@ -262,6 +265,106 @@ When `plan.md` already exists:
   `**Owned paths:**` and `**Verification:**` blocks) rather than
   editing phases that are already `Complete`.
 
+## Open Questions Walkthrough
+
+A pass that ends with a non-empty *Open Questions* section is not
+finished until the user has been **offered** the chance to answer those
+questions interactively. Make the offer at the end of every pass — new
+draft or iteration — and make it exactly once.
+
+This is not the same as the open decision you resolve in *Workflow*
+step 5. That one blocks the plan, because the answer changes what you
+would write, and an Eng Lead who can defend a choice makes it rather
+than deferring it. The walkthrough happens after `plan.md` exists, and
+covers the decisions you deliberately left to the user.
+
+### The offer
+
+After you report back, ask one question: walk the open questions now,
+or leave them for the user to answer by editing `plan.md` directly.
+
+> *"{N} open questions are still unanswered. Want to walk through them
+> now, or would you rather edit `plan.md` yourself?"*
+
+Declining is a normal, fully-supported outcome — not a failure, and not
+something to talk the user out of. When they decline, name the file
+path and stop. Do not re-offer, and do not start asking the questions
+anyway.
+
+### The walkthrough
+
+When the user accepts, take the questions **one at a time, in document
+order**. Never bundle two questions into one prompt, and never dump the
+whole list and ask for answers in prose. The value of the walkthrough
+is that each question arrives with the thinking already done.
+
+For each question:
+
+1. **State the question** in one sentence, with just enough context
+   that the user does not have to re-read the plan to answer it.
+2. **Offer at most three answers.** Each is a concrete answer, not a
+   category of answer, and each carries a one-line **rationale**: what
+   choosing it buys, and what it costs — in the same terms the plan
+   uses, so risk, blast radius, and test surface. Two is right when
+   only two answers are real; a padded straw-man option is worse than a
+   short list.
+3. **Recommend exactly one**, and justify the recommendation *against
+   the others*: what makes it the better trade here, not merely that
+   you prefer it. You are still the Eng Lead — an unranked menu is an
+   abdication.
+4. **Leave the free-form answer open.** The user is never confined to
+   your three. When the interactive question tool supplies its own
+   free-text option, rely on that rather than spending one of your
+   three choices on "something else".
+
+Use the session's interactive question tool so the choices are
+selectable. When there is none, ask in plain text with the options
+numbered — the shape of the question does not change.
+
+### Applying answers
+
+Apply each answer to the plan **before moving to the next question**,
+so an interrupted walkthrough never loses work.
+
+- The answered question **leaves** *Open Questions*.
+- The decision **lands** in the section it belongs to — *Approach*,
+  *Alternatives Considered*, a phase's **Steps**, **Owned paths**, or
+  **Verification** block, *Tests*, *Risks & Mitigations*, or *Out of
+  Scope* — written as a decision the plan has made, not as "the user
+  said". A rejected option that was a real contender belongs in
+  *Alternatives Considered* with its reason.
+- Every rule the plan already obeys still applies to what you write:
+  verification commands come verbatim from `AGENTS.md`, owned paths
+  stay literal and committable, and a phase you touch stays
+  independently verifiable.
+- If the answer contradicts something already written, fix that too,
+  and say so when you close.
+- If the answer would change a phase that is already `In-progress` or
+  `Complete`, follow *Iteration Mode*: surface it and propose a new
+  phase rather than rewriting one `dev-do` has already executed.
+
+A free-form answer may raise a new question. Add it to *Open Questions*
+and offer it at the end of the current walkthrough, rather than
+derailing the question in front of you.
+
+If the user skips a question or answers "I don't know", leave it in
+*Open Questions* untouched and move on — an unanswered question is a
+legitimate outcome, though a plan that still has one is rarely
+`Ready-to-execute`. The user may also stop the walkthrough at any
+point: apply what was answered, leave the rest, and close.
+
+### Closing
+
+Close by reporting which questions were answered, which sections and
+phases changed, and what remains in *Open Questions*.
+
+Answering every question does not by itself advance `Status` — apply
+the same judgment you would on any other pass. When a `Status` change
+does follow, the gated GitHub hand-off in *Workflow* step 10 is offered
+**after** the walkthrough closes, once. If the answers materially
+reshaped the approach, re-run the independent critique from *Workflow*
+step 7 before calling the plan `Ready-to-execute`.
+
 ## Important Rules
 
 - **Stay in the Eng Lead role.** Do not implement the plan. Do not run
@@ -295,6 +398,16 @@ When `plan.md` already exists:
   later `In-progress`, `Blocked`, and `Complete` transitions.
 - **Name specifics.** Files, classes, functions, test methods,
   commands. No "the relevant module".
+- **Offer the walkthrough before you finish.** A pass that ends with a
+  non-empty *Open Questions* section closes with the offer in
+  § *Open Questions Walkthrough*. The user may decline and edit
+  `plan.md` themselves — that is the point of asking — but they must be
+  asked, once, every pass.
+- **One question at a time; three answers at most.** Every answer
+  carries a rationale, exactly one is recommended with a justification
+  against the others, and a free-form answer is always available. A
+  wall of questions is not a walkthrough, and an unranked menu is not
+  an Eng Lead.
 - **Honor repo conventions.** Repository conventions live in
   `AGENTS.md`. Before naming any build, test, or lint command, read
   `AGENTS.md` at the repository root. If it is absent, fall back to

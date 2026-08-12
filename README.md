@@ -35,6 +35,12 @@ Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
 `dev-do` commits locally and **never pushes or opens a PR** — `dev-pr-open`
 is the only skill permitted to do either.
 
+`dev-request`, `dev-report`, and `dev-plan` each end a pass by offering to
+**walk through the open questions** their artifact still carries. Accept and
+you answer them one at a time, each with up to three rationalized options, a
+recommendation, and room to type your own; decline and the questions stay in
+the file for you to edit yourself.
+
 ## The AGENTS.md contract
 
 The seven worker skills carry **no repository-specific knowledge**. They are

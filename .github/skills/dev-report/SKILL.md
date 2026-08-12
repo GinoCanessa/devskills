@@ -105,6 +105,9 @@ evidence they have.
    sections that don't conflict with your edits.
 7. **Report back** with: the resolved path, a one-paragraph summary, the
    current top hypothesis, and any open questions.
+8. **Offer the open-questions walkthrough** whenever the file's *Open
+   Questions* section is non-empty — see § *Open Questions
+   Walkthrough*.
 
 ## Report Format
 
@@ -190,6 +193,101 @@ local dev, or is cosmetic. Whether data is at risk.}
 {Free-form. Links to related tickets, prior fixes, design docs.}
 ```
 
+## Open Questions Walkthrough
+
+A pass that ends with a non-empty *Open Questions* section is not
+finished until the user has been **offered** the chance to answer those
+questions interactively. Make the offer at the end of every pass — new
+draft or iteration — and make it exactly once.
+
+This is not the same as the mid-draft clarifying question in *Workflow*
+step 5. That one blocks the draft, because the answer changes what you
+would write. The walkthrough happens after the file exists, and covers
+everything you recorded rather than blocked on.
+
+### The offer
+
+After you report back, ask one question: walk the open questions now,
+or leave them for the user to answer by editing `bugreport.md`
+directly.
+
+> *"{N} open questions are still unanswered. Want to walk through them
+> now, or would you rather edit `bugreport.md` yourself?"*
+
+Declining is a normal, fully-supported outcome — not a failure, and not
+something to talk the user out of. When they decline, name the file
+path and stop. Do not re-offer, and do not start asking the questions
+anyway.
+
+### The walkthrough
+
+When the user accepts, take the questions **one at a time, in document
+order**. Never bundle two questions into one prompt, and never dump the
+whole list and ask for answers in prose. The value of the walkthrough
+is that each question arrives with the thinking already done.
+
+For each question:
+
+1. **State the question** in one sentence, with just enough context
+   that the user does not have to re-read the file to answer it.
+2. **Offer at most three answers.** Each is a concrete answer, not a
+   category of answer, and each carries a one-line **rationale**: what
+   choosing it buys, and what it costs. Two is right when only two
+   answers are real — a padded straw-man option is worse than a short
+   list.
+3. **Recommend exactly one**, and justify the recommendation *against
+   the others*: what makes it the better trade here, not merely that
+   you prefer it.
+4. **Leave the free-form answer open.** The user is never confined to
+   your three. When the interactive question tool supplies its own
+   free-text option, rely on that rather than spending one of your
+   three choices on "something else".
+
+Use the session's interactive question tool so the choices are
+selectable. When there is none, ask in plain text with the options
+numbered — the shape of the question does not change.
+
+A question whose answer is *evidence* — a version, a log line, an exit
+code — is still a question worth offering. Make the choices the
+plausible values you already suspect, and let the free-form answer
+carry the exact text the user pastes back.
+
+### Applying answers
+
+Apply each answer to the document **before moving to the next
+question**, so an interrupted walkthrough never loses work.
+
+- The answered question **leaves** *Open Questions*.
+- The decision **lands** in the section it belongs to — *Environment*,
+  *Symptoms*, *Steps to Reproduce*, *Evidence*, *Workarounds*, or
+  *Blast Radius* — written as settled content, not as "the user said".
+  Keep the observation/interpretation split: an answer that confirms or
+  kills a cause re-ranks *Hypotheses* and does not become a symptom.
+- Evidence the user pastes in is quoted **verbatim**, exactly as the
+  rest of *Evidence* is.
+- If the answer contradicts something already written, fix that too,
+  and say so when you close.
+
+A free-form answer may raise a new question. Add it to *Open Questions*
+and offer it at the end of the current walkthrough, rather than
+derailing the question in front of you.
+
+If the user skips a question or answers "I don't know", leave it in
+*Open Questions* untouched and move on — an unanswered question is a
+legitimate outcome, and "no deterministic repro yet" is a real state.
+The user may also stop the walkthrough at any point: apply what was
+answered, leave the rest, and close.
+
+### Closing
+
+Close by reporting which questions were answered, which sections
+changed, and what remains in *Open Questions*.
+
+Answering every question does not by itself advance `Status` or
+`Severity` — apply the same judgment you would on any other pass. When
+a `Status` change does follow, the gated hand-off offer below is made
+**after** the walkthrough closes, once.
+
 ## GitHub Integration (optional)
 
 **Gate.** If `AGENTS.md` has no `## GitHub Integration` section, or its
@@ -244,6 +342,15 @@ command itself.
   cause as a symptom.
 - **Quote evidence verbatim.** Do not "tidy up" stack traces or log
   lines.
+- **Offer the walkthrough before you finish.** A pass that ends with a
+  non-empty *Open Questions* section closes with the offer in
+  § *Open Questions Walkthrough*. The user may decline and edit
+  `bugreport.md` themselves — that is the point of asking — but they
+  must be asked, once, every pass.
+- **One question at a time; three answers at most.** Every answer
+  carries a rationale, exactly one is recommended with a justification
+  against the others, and a free-form answer is always available. A
+  wall of questions is not a walkthrough.
 - **Do not modify `featurerequest.md` or `plan.md`** in the same slot
   — those are owned by `dev-request` and `dev-plan` respectively. The
   same goes for `analysis.md`, which is owned by `dev-review`.
