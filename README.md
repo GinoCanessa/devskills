@@ -5,10 +5,12 @@ inner-loop workflow for local development:
 
 ```
 dev-request  ─┐
-              ├─→  dev-plan  ─→  dev-do  ─→  dev-review  ─→  dev-pr-open
-dev-report   ─┘                    ↑             │             (opt-in)
-                                   └─────────────┘
-                                   (findings fold back into the plan)
+              ├─→  dev-approach  ─→  dev-plan  ─→  dev-do  ───────┐
+dev-report   ─┘     (optional)           ↑                        │
+                                         │                        ↓
+                                         └─  dev-review  ─→  dev-pr-open
+                                                              (opt-in)
+                                         (findings fold back into the plan)
 ```
 
 `dev-issue` (opt-in) is a side branch off the authoring skills: it publishes
@@ -16,7 +18,7 @@ a `featurerequest.md` or `bugreport.md` as a GitHub issue, binds the slot to
 it, and can later attach the finished `plan.md` as a managed comment.
 `dev-pr-open` is the terminal step that pushes the branch and opens the PR.
 
-`dev-setup` is the installer that copies the other seven into a target repo.
+`dev-setup` is the installer that copies the other eight into a target repo.
 
 ## The skills
 
@@ -24,6 +26,7 @@ it, and can later attach the finished `plan.md` as a managed comment.
 |-|-|-|-|
 | `dev-request` | Staff-level PM | your idea | `scratch/<MMDD>-<##>/featurerequest.md` |
 | `dev-report` | Staff-level Tech Lead | your defect report | `scratch/<MMDD>-<##>/bugreport.md` |
+| `dev-approach` *(optional)* | Eng Lead ×3 + Judge | a request or report | `scratch/<MMDD>-<##>/approach-a\|b\|c.md` + `approach.md` |
 | `dev-plan` | Staff-level Eng Lead | a request or report | `scratch/<MMDD>-<##>/plan.md` |
 | `dev-do` | Staff-level Engineer | `plan.md` | source code + local commits |
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
@@ -43,7 +46,7 @@ the file for you to edit yourself.
 
 ## The AGENTS.md contract
 
-The seven worker skills carry **no repository-specific knowledge**. They are
+The eight worker skills carry **no repository-specific knowledge**. They are
 byte-identical in every repo they are installed into.
 
 Everything repo-specific — build commands, test commands and filter syntax,
@@ -76,7 +79,7 @@ dev-setup C:\ai\git\some-repo
    (default: no), and — when it is — resolve the target repository, the
    label mapping, the changelog location and format, and whether PRs open
    as drafts.
-3. Copy the seven worker skills into `<target>/.github/skills/`.
+3. Copy the eight worker skills into `<target>/.github/skills/`.
 4. Write ignore rules into a sentinel block — `.git/info/exclude` when
    excluded, `.gitignore` when included.
 5. Create `<target>/scratch/`.
@@ -124,6 +127,7 @@ Then the loop is:
 ```
 dev-request 1        # or: dev-report 1
 dev-issue 1          # optional: publish it as an issue, bind the slot
+dev-approach 1       # optional: contest the solution shape first
 dev-plan 1
 dev-issue 1          # optional: attach the finished plan as a comment
 dev-do 1
@@ -164,6 +168,6 @@ When it is on:
   issue in scope so merging closes them all.
 
 Guardrails worth knowing: every write is confirmed with you in the moment,
-`analysis.md` is **never** published, the recorded repository is
-cross-checked against `origin` before any write, and `dev-pr-open` refuses
-to run when `HEAD` is the default branch.
+`analysis.md` and `approach*.md` are **never** published, the recorded
+repository is cross-checked against `origin` before any write, and
+`dev-pr-open` refuses to run when `HEAD` is the default branch.

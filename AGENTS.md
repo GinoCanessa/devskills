@@ -19,13 +19,13 @@ application code: it is a documentation repository whose artifacts are
 markdown skill definitions that get copied into *other* repositories by
 `dev-setup`.
 
-The framing fact that settles arguments here: **the seven worker skills
+The framing fact that settles arguments here: **the eight worker skills
 must contain zero repository-specific knowledge.** Anything that varies
 between repositories belongs in that repository's own `AGENTS.md`, not in a
-skill. If a proposed edit to `dev-do`, `dev-plan`, `dev-review`,
-`dev-request`, `dev-report`, `dev-issue`, or `dev-pr-open` mentions a
-concrete build command, a project name, a language, or a framework as
-anything other than a neutral example, it is wrong.
+skill. If a proposed edit to `dev-do`, `dev-plan`, `dev-approach`,
+`dev-review`, `dev-request`, `dev-report`, `dev-issue`, or `dev-pr-open`
+mentions a concrete build command, a project name, a language, or a
+framework as anything other than a neutral example, it is wrong.
 
 `dev-setup` is the one exception: it is the installer, so it legitimately
 knows about stacks, detection heuristics, and git plumbing.
@@ -39,6 +39,7 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-setup/` | The installer skill. Knows about stacks and git plumbing. Never copied into a target. |
 | `.github/skills/dev-request/` | PM role — authors `featurerequest.md`. |
 | `.github/skills/dev-report/` | Tech Lead role — authors `bugreport.md`. |
+| `.github/skills/dev-approach/` | Eng Lead ×3 + Judge — authors `approach-a\|b\|c.md` and `approach.md`. |
 | `.github/skills/dev-plan/` | Eng Lead role — authors `plan.md`. |
 | `.github/skills/dev-do/` | Engineer role — executes `plan.md`, commits locally. |
 | `.github/skills/dev-review/` | Eng Lead + QA Lead roles — authors `analysis.md`. |
@@ -97,6 +98,7 @@ change to a skill done:
 
 3. **Cross-skill references resolve.** Skill names cited in one skill exist
    as directories; file names cited (`featurerequest.md`, `bugreport.md`,
+   `approach-a.md`, `approach-b.md`, `approach-c.md`, `approach.md`,
    `plan.md`, `analysis.md`, `AGENTS.md`) match what the authoring skill
    actually writes.
 
@@ -147,7 +149,7 @@ change to a skill done:
    start — it never loads, never appears in the agent's skill list, and
    raises no error. Because this repo is the canonical source, an
    over-limit description here propagates to every repo that runs
-   `dev-setup`. This must report `ok` for all eight skills:
+   `dev-setup`. This must report `ok` for all nine skills:
 
    ```powershell
    Get-ChildItem .github\skills -Directory | ForEach-Object {
@@ -211,7 +213,7 @@ Markdown, authored for a model to read.
 These are decisions, not preferences. Violating one is a review Blocker.
 
 - **Worker skills are repo-agnostic.** See "What this repository is". The
-  seven worker skills must be safe to copy byte-for-byte into any
+  eight worker skills must be safe to copy byte-for-byte into any
   repository.
 - **`AGENTS.md` is the only repo-specific channel.** A worker skill that
   needs repository knowledge must instruct the agent to *read `AGENTS.md`*,
@@ -222,14 +224,17 @@ These are decisions, not preferences. Violating one is a review Blocker.
   command must require it to come from `AGENTS.md`, and must say "stop and
   ask" rather than substitute a guess.
 - **The loop's file ownership is fixed.** `featurerequest.md` →
-  `dev-request`, `bugreport.md` → `dev-report`, `plan.md` → `dev-plan`
-  (created) and `dev-do` (updated), `analysis.md` → `dev-review`. No skill
-  writes another's file. `dev-plan` and `dev-do` treat the source request as
-  read-only. The `Issue` binding row is the one value that appears in all
-  four artifacts: whichever skill authors a file propagates the row into it
-  under the **no-downgrade ratchet** — an existing `#N` is never replaced
-  with `not published` — and only `dev-issue` resolves a disagreement
-  between two artifacts.
+  `dev-request`, `bugreport.md` → `dev-report`, `approach-a.md` /
+  `approach-b.md` / `approach-c.md` / `approach.md` → `dev-approach`,
+  `plan.md` → `dev-plan` (created) and `dev-do` (updated), `analysis.md` →
+  `dev-review`. No skill writes another's file. `dev-plan` and `dev-do`
+  treat the source request as read-only, and `dev-plan` treats the four
+  approach artifacts as read-only in exactly the same way. The `Issue`
+  binding row is the one value that appears in **every** slot artifact:
+  whichever skill authors a file propagates the row into it under the
+  **no-downgrade ratchet** — an existing `#N` is never replaced with
+  `not published` — and only `dev-issue` resolves a disagreement between
+  two artifacts.
 - **`dev-review` is read-only** with respect to the codebase. It writes
   `analysis.md` and nothing else.
 - **`dev-do` commits locally, never pushes, never opens a PR.** Its
@@ -250,7 +255,11 @@ These are decisions, not preferences. Violating one is a review Blocker.
   approval. `dev-do`'s prohibition is unchanged and is not to be relaxed.
 - **The integration is off by default.** An absent `## GitHub Integration`
   section, or one whose `Enabled` row says `no`, means off — and
-  `analysis.md` is never published.
+  `analysis.md` and `approach*.md` are never published. That prohibition is
+  on the **files**: `plan.md`'s `Approach` metadata row and its
+  `## Approach` section are `dev-plan`'s own prose and are published
+  normally, both in `dev-issue`'s plan comment and in `dev-pr-open`'s PR
+  body.
 - **No worker skill names a GitHub label.** The stock-label defaults live
   only in `dev-setup`, which this file already exempts as the installer.
   `dev-issue` reads the mapping from the target's `AGENTS.md`; a "missing
@@ -259,7 +268,7 @@ These are decisions, not preferences. Violating one is a review Blocker.
   Guarded by § *Test* check 6.
 - **`dev-setup` never stages, commits, or pushes,** and never edits a shared
   `.gitignore` in `exclude` mode.
-- **`dev-setup` is never installed into a target repo.** Only the seven
+- **`dev-setup` is never installed into a target repo.** Only the eight
   worker skills are.
 
 ---
@@ -295,6 +304,10 @@ Local inner-loop work is organized into **slots** under `scratch/`:
 scratch/<MMDD>-<##>/
   featurerequest.md    # authored by the dev-request skill
   bugreport.md         # authored by the dev-report skill
+  approach-a.md        # authored by dev-approach (minimum change)
+  approach-b.md        # authored by dev-approach (cleanest architecture)
+  approach-c.md        # authored by dev-approach (unconstrained)
+  approach.md          # authored by dev-approach (the judge's selection)
   plan.md              # authored by dev-plan, updated by dev-do
   analysis.md          # authored by dev-review
 ```

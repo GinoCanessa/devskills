@@ -221,6 +221,10 @@ Local inner-loop work is organized into **slots** under `scratch/`:
 scratch/<MMDD>-<##>/
   featurerequest.md    # authored by the dev-request skill
   bugreport.md         # authored by the dev-report skill
+  approach-a.md        # authored by dev-approach (minimum change)
+  approach-b.md        # authored by dev-approach (cleanest architecture)
+  approach-c.md        # authored by dev-approach (unconstrained)
+  approach.md          # authored by dev-approach (the judge's selection)
   plan.md              # authored by dev-plan, updated by dev-do
   analysis.md          # authored by dev-review
 ```
