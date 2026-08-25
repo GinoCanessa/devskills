@@ -336,9 +336,13 @@ verbatim** — it is deliberately not duplicated there.
   one row is this skill's to write; every other line of
   `featurerequest.md`, `bugreport.md`, and `plan.md` belongs to the
   skill that authored it.
-- **`analysis.md` is never published.** Not as an issue, not as a
-  comment, not as a quotation. Review findings re-enter the loop as a
-  new `dev-request` / `dev-report`, which get their own issue.
+- **`analysis.md` and `approach*.md` are never published.** Not as an
+  issue, not as a comment, not as a quotation. Review findings re-enter
+  the loop as a new `dev-request` / `dev-report`, which get their own
+  issue; a solution shape reaches GitHub only through `plan.md`. The
+  prohibition is on the **files** — `plan.md`'s `Approach` metadata row
+  and its `## Approach` section are `dev-plan`'s own prose and **are**
+  published normally as part of the plan comment.
 - **No issue is ever closed here.** Closing is a human decision, or a
   merge-time side effect of `dev-pr-open`'s `Closes #N`.
 - **Nothing is staged, committed, or pushed.** This skill writes local

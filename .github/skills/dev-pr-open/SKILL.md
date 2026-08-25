@@ -393,12 +393,15 @@ call.**
   that at merge time; this skill does not close anything itself.
 - **Never takes the pull request out of draft.** Marking it ready for
   review is a human signal about human readiness.
-- **Never reads or quotes `analysis.md`.** Review findings are an
-  internal artifact; they do not belong in a public PR body. When
-  `analysis.md` is **absent** — for the named slot in slot mode, or for
-  any in-scope slot in branch mode — *recommend* running `dev-review`
-  against it first, naming which slots lack one. A recommendation,
-  **never a gate**.
+- **Never reads or quotes `analysis.md` or `approach*.md`.** Review
+  findings and rejected solution shapes are internal artifacts; they do
+  not belong in a public PR body. The prohibition is on the **files** —
+  *Body assembly* step 2 lifts `plan.md`'s `## Approach` section into
+  the body as it always has, because that section is `dev-plan`'s own
+  prose. When `analysis.md` is **absent** — for the named slot in slot
+  mode, or for any in-scope slot in branch mode — *recommend* running
+  `dev-review` against it first, naming which slots lack one. A
+  recommendation, **never a gate**.
 
 ## Important Rules
 
@@ -422,10 +425,10 @@ call.**
   sanctioned home for both operations.
 - **Slot artifacts are read-only here,** in both modes and for every
   slot discovery turns up. This skill writes no `featurerequest.md`,
-  `bugreport.md`, `plan.md`, or `analysis.md`. The `Issue` binding
-  belongs to `dev-issue` — if a slot is unbound and the user wants it
-  bound, point them at `dev-issue` rather than writing a number
-  yourself.
+  `bugreport.md`, `plan.md`, `analysis.md`, or `approach*.md`. The
+  `Issue` binding belongs to `dev-issue` — if a slot is unbound and the
+  user wants it bound, point them at `dev-issue` rather than writing a
+  number yourself.
 - **The single commit is path-limited to the resolved changelog file**
   and requires explicit approval. Everything else this skill publishes
   was already committed by `dev-do`.
