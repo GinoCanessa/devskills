@@ -4,6 +4,8 @@ The canonical source for the `dev-*` Copilot skills — a small, opinionated
 inner-loop workflow for local development:
 
 ```
+dev-complete ─┐  one invocation drives the whole chain below
+              ↓  (it stops short of dev-pr-open)
 dev-request  ─┐
               ├─→  dev-approach  ─→  dev-plan  ─→  dev-do  ───────┐
 dev-report   ─┘     (optional)           ↑                        │
@@ -17,8 +19,10 @@ dev-report   ─┘     (optional)           ↑                        │
 a `featurerequest.md` or `bugreport.md` as a GitHub issue, binds the slot to
 it, and can later attach the finished `plan.md` as a managed comment.
 `dev-pr-open` is the terminal step that pushes the branch and opens the PR.
+`dev-complete` runs the authoring chain end to end for you — `dev-approach`
+is optional when you drive the loop by hand, and mandatory inside a run.
 
-`dev-setup` is the installer that copies the other eight into a target repo.
+`dev-setup` is the installer that copies the other nine into a target repo.
 
 ## The skills
 
@@ -32,6 +36,7 @@ it, and can later attach the finished `plan.md` as a managed comment.
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
 | `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
+| `dev-complete` | Orchestrator | a slot + a kind + content | *nothing of its own; drives the skills that write* |
 | `dev-setup` | Setup engineer | a target repo | installed skills + `AGENTS.md` |
 
 Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
@@ -46,7 +51,7 @@ the file for you to edit yourself.
 
 ## The AGENTS.md contract
 
-The eight worker skills carry **no repository-specific knowledge**. They are
+The nine worker skills carry **no repository-specific knowledge**. They are
 byte-identical in every repo they are installed into.
 
 Everything repo-specific — build commands, test commands and filter syntax,
@@ -79,7 +84,7 @@ dev-setup C:\ai\git\some-repo
    (default: no), and — when it is — resolve the target repository, the
    label mapping, the changelog location and format, and whether PRs open
    as drafts.
-3. Copy the eight worker skills into `<target>/.github/skills/`.
+3. Copy the nine worker skills into `<target>/.github/skills/`.
 4. Write ignore rules into a sentinel block — `.git/info/exclude` when
    excluded, `.gitignore` when included.
 5. Create `<target>/scratch/`.
@@ -137,6 +142,21 @@ dev-pr-open 1        # push the branch, open the PR
 
 `1` is a slot number; it expands to `scratch/<MMDD>-01/` using today's date.
 Every skill also accepts a full path if you need a previous day's slot.
+
+Or drive the whole authoring chain with one invocation:
+
+```
+dev-complete 1 request "Add a --dry-run flag to the export command"
+dev-complete 1 report  gh#412
+```
+
+`dev-complete` runs `dev-request` / `dev-report` → `dev-approach` →
+`dev-plan` → `dev-do`, then a `dev-review` remediation tail. It answers the
+open questions each stage would have parked, records every answer in that
+stage's own artifact, and reports them all at the close for you to review
+once. It stops only on a genuine blocker, and it commits locally without
+ever pushing or opening a PR. The hand-driven loop above is unchanged and
+still fully supported — use it whenever you want a gate between stages.
 
 `dev-pr-open` is the exception: given no slot it publishes **every local
 commit ahead of the default branch**, spanning as many slots, requests, and

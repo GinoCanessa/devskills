@@ -19,13 +19,14 @@ application code: it is a documentation repository whose artifacts are
 markdown skill definitions that get copied into *other* repositories by
 `dev-setup`.
 
-The framing fact that settles arguments here: **the eight worker skills
+The framing fact that settles arguments here: **the nine worker skills
 must contain zero repository-specific knowledge.** Anything that varies
 between repositories belongs in that repository's own `AGENTS.md`, not in a
 skill. If a proposed edit to `dev-do`, `dev-plan`, `dev-approach`,
-`dev-review`, `dev-request`, `dev-report`, `dev-issue`, or `dev-pr-open`
-mentions a concrete build command, a project name, a language, or a
-framework as anything other than a neutral example, it is wrong.
+`dev-review`, `dev-request`, `dev-report`, `dev-issue`, `dev-pr-open`, or
+`dev-complete` mentions a concrete build command, a project name, a
+language, or a framework as anything other than a neutral example, it is
+wrong.
 
 `dev-setup` is the one exception: it is the installer, so it legitimately
 knows about stacks, detection heuristics, and git plumbing.
@@ -45,6 +46,7 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-review/` | Eng Lead + QA Lead roles — authors `analysis.md`. |
 | `.github/skills/dev-issue/` | GitHub issue writer — sole writer of issues and of the `Issue` binding row; owns the Resolve-and-Record Protocol. |
 | `.github/skills/dev-pr-open/` | Push + PR — the only skill permitted to do either. |
+| `.github/skills/dev-complete/` | Orchestrator role — drives the whole chain in one invocation; owns no artifact. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target repo. |
 | `scratch/` | Local feature requests / plans / analyses (**ignored**). |
 
@@ -149,7 +151,7 @@ change to a skill done:
    start — it never loads, never appears in the agent's skill list, and
    raises no error. Because this repo is the canonical source, an
    over-limit description here propagates to every repo that runs
-   `dev-setup`. This must report `ok` for all nine skills:
+   `dev-setup`. This must report `ok` for all ten skills:
 
    ```powershell
    Get-ChildItem .github\skills -Directory | ForEach-Object {
@@ -213,7 +215,7 @@ Markdown, authored for a model to read.
 These are decisions, not preferences. Violating one is a review Blocker.
 
 - **Worker skills are repo-agnostic.** See "What this repository is". The
-  eight worker skills must be safe to copy byte-for-byte into any
+  nine worker skills must be safe to copy byte-for-byte into any
   repository.
 - **`AGENTS.md` is the only repo-specific channel.** A worker skill that
   needs repository knowledge must instruct the agent to *read `AGENTS.md`*,
@@ -227,9 +229,11 @@ These are decisions, not preferences. Violating one is a review Blocker.
   `dev-request`, `bugreport.md` → `dev-report`, `approach-a.md` /
   `approach-b.md` / `approach-c.md` / `approach.md` → `dev-approach`,
   `plan.md` → `dev-plan` (created) and `dev-do` (updated), `analysis.md` →
-  `dev-review`. No skill writes another's file. `dev-plan` and `dev-do`
-  treat the source request as read-only, and `dev-plan` treats the four
-  approach artifacts as read-only in exactly the same way. The `Issue`
+  `dev-review`. No skill writes another's file, and `dev-complete` writes
+  **none** of them — it orchestrates, and every slot file is still written
+  by the skill that owns it. `dev-plan` and `dev-do` treat the source
+  request as read-only, and `dev-plan` treats the four approach artifacts
+  as read-only in exactly the same way. The `Issue`
   binding row is the one value that appears in **every** slot artifact:
   whichever skill authors a file propagates the row into it under the
   **no-downgrade ratchet** — an existing `#N` is never replaced with
@@ -268,8 +272,16 @@ These are decisions, not preferences. Violating one is a review Blocker.
   Guarded by § *Test* check 6.
 - **`dev-setup` never stages, commits, or pushes,** and never edits a shared
   `.gitignore` in `exclude` mode.
-- **`dev-setup` is never installed into a target repo.** Only the eight
+- **`dev-setup` is never installed into a target repo.** Only the nine
   worker skills are.
+- **`dev-complete` owns no artifact.** It orchestrates; every slot file is
+  still written by the skill that owns it, dispatched as a stage. It never
+  edits an artifact to fix a stage's work.
+- **A question never stops a `dev-complete` run; a blocker always does.**
+  Resolving a question into a recorded assumption is the point of the
+  skill. An undocumented command, an unexplained failure, or a hand-off
+  offer is not a question it may resolve on the merits — the first two are
+  blockers, and every publish or hand-off offer resolves to *decline*.
 
 ---
 
