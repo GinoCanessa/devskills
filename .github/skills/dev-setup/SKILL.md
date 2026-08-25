@@ -1,6 +1,6 @@
 ---
 name: dev-setup
-description: "Bootstraps a repository for local inner-loop development with the `dev-*` skills. USE FOR: setting up a repo clone so `dev-request`, `dev-report`, `dev-approach`, `dev-plan`, `dev-do`, `dev-review`, `dev-issue`, and `dev-pr-open` are available, scaffolding or auditing the repo-root `AGENTS.md` that those skills read for build/test commands and conventions, and wiring up `scratch/`. Asks whether the setup should be **included in** or **excluded from** git; when excluded it writes per-skill rules to `.git/info/exclude` and leaves the shared `.gitignore` untouched. Also asks whether the opt-in GitHub integration should be enabled, and records the answer — along with the target repository, label mapping, changelog location, and draft-PR policy — in the target's `AGENTS.md`. Accepts an optional path to the target repo (defaults to the current git repository) and an optional `git_mode` of `include` or `exclude`. Idempotent and re-runnable. Never commits, never pushes."
+description: "Bootstraps a repository for local inner-loop development with the `dev-*` skills. USE FOR: setting up a repo clone so `dev-request`, `dev-report`, `dev-approach`, `dev-plan`, `dev-do`, `dev-review`, `dev-issue`, `dev-pr-open`, and `dev-complete` are available, scaffolding or auditing the repo-root `AGENTS.md` that those skills read for build/test commands and conventions, and wiring up `scratch/`. Asks whether the setup should be **included in** or **excluded from** git; when excluded it writes per-skill rules to `.git/info/exclude` and leaves the shared `.gitignore` untouched. Also asks whether the opt-in GitHub integration should be enabled, and records the answer — along with the target repository, label mapping, changelog location, and draft-PR policy — in the target's `AGENTS.md`. Accepts an optional path to the target repo (defaults to the current git repository) and an optional `git_mode` of `include` or `exclude`. Idempotent and re-runnable. Never commits, never pushes."
 ---
 
 # Dev Setup Skill
@@ -9,17 +9,18 @@ Bootstraps a repository for inner-loop development with the `dev-*` skills.
 One invocation makes a repo ready to use `dev-request` → `dev-report` →
 `dev-approach` → `dev-plan` → `dev-do` → `dev-review` → `dev-pr-open`,
 with `dev-issue` as an opt-in side branch that publishes any of those
-artifacts to GitHub.
+artifacts to GitHub, and `dev-complete` as the orchestrator that drives
+the whole chain in a single invocation.
 
 This skill is the **installer**. It runs from the canonical source
-repository (this one) and copies the *other* eight skills into a target
+repository (this one) and copies the *other* nine skills into a target
 repo, wires up the `scratch/` workspace, and scaffolds or audits the
 target's repo-root `AGENTS.md`. It does **not** install itself into the
 target.
 
 ## The AGENTS.md contract
 
-The eight worker skills contain **no repository-specific knowledge**. They
+The nine worker skills contain **no repository-specific knowledge**. They
 are identical in every repo. Everything repo-specific — build commands, test
 commands and filter syntax, toolchain pins, code style, architectural
 invariants, commit trailers — lives in a single **`AGENTS.md` at the target
@@ -68,17 +69,17 @@ You are a **setup engineer**. That means:
 2. **`git_mode`** *(optional)* — `include` or `exclude`. See "Git Mode"
    below. If the user did not state it, **ask** before writing anything.
 
-3. **Canonical source** *(implicit)* — the eight sibling skill directories
+3. **Canonical source** *(implicit)* — the nine sibling skill directories
    next to this one. Resolve:
    - `SKILLS_SOURCE` = the parent directory of this `dev-setup` skill
      directory (it contains `dev-request/`, `dev-report/`,
      `dev-approach/`, `dev-plan/`, `dev-do/`, `dev-review/`,
-     `dev-issue/`, `dev-pr-open/`).
+     `dev-issue/`, `dev-pr-open/`, `dev-complete/`).
    - `BASE_ROOT` = `git -C <SKILLS_SOURCE> rev-parse --show-toplevel` when
      that succeeds; otherwise `SKILLS_SOURCE` with a trailing
      `.github\skills` stripped.
    - `TEMPLATE` = `<BASE_ROOT>\templates\AGENTS.template.md`.
-   Confirm all eight source skill directories exist; stop if any are
+   Confirm all nine source skill directories exist; stop if any are
    missing. `dev-setup` itself is **never** copied into the target.
 
 ## Git Mode
@@ -147,6 +148,7 @@ ever hides what this skill installed:
 /.github/skills/dev-review/
 /.github/skills/dev-issue/
 /.github/skills/dev-pr-open/
+/.github/skills/dev-complete/
 
 # Local scratch workspace for dev-* skills (local only)
 /scratch/
@@ -176,7 +178,7 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    git repo, or if it is the canonical source repo.
 
 2. **Resolve the canonical source.** Compute `SKILLS_SOURCE`, `BASE_ROOT`,
-   and `TEMPLATE` as described under Inputs. Confirm the eight skill
+   and `TEMPLATE` as described under Inputs. Confirm the nine skill
    directories exist.
 
 3. **Settle the git mode.** Use `git_mode` if given; otherwise ask. Detect a
@@ -203,15 +205,16 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      skip that detection entirely rather than resolving values nobody asked
      for.
 
-4. **Copy the eight skills into the target (overwrite).** Copy each of the
-   eight `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
+4. **Copy the nine skills into the target (overwrite).** Copy each of the
+   nine `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
    replacing any existing copy. Do **not** copy `dev-setup`.
 
    ```powershell
    $skillsDir = Join-Path $TARGET '.github\skills'
    New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
    foreach ($s in 'dev-request','dev-report','dev-approach','dev-plan',
-                  'dev-do','dev-review','dev-issue','dev-pr-open') {
+                  'dev-do','dev-review','dev-issue','dev-pr-open',
+                  'dev-complete') {
      Copy-Item -Recurse -Force (Join-Path $SKILLS_SOURCE $s) $skillsDir
    }
    ```
@@ -231,7 +234,8 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
 
    ```powershell
    foreach ($s in 'dev-request','dev-report','dev-approach','dev-plan',
-                  'dev-do','dev-review','dev-issue','dev-pr-open') {
+                  'dev-do','dev-review','dev-issue','dev-pr-open',
+                  'dev-complete') {
      $raw = Get-Content (Join-Path $skillsDir "$s\SKILL.md") -Raw
      $d = [regex]::Match($raw, '(?m)^description:(.+)$').
             Groups[1].Value.Trim().Trim('"')
@@ -380,7 +384,7 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      `AGENTS.md` without the user's go-ahead.
 
 9. **Verify.** Confirm and report pass/fail for each:
-   - All eight `SKILL.md` files are present under
+   - All nine `SKILL.md` files are present under
      `<TARGET>\.github\skills\`.
    - Every copied skill's `description` is **≤ 1024 characters** (step 4.5).
      Report the measured length of each, not just a pass/fail — a skill
@@ -388,14 +392,14 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      invisible.
    - The sentinel block exists exactly once, in the file the mode requires,
      and not in the other one.
-   - `exclude` mode: the ignore block **names all eight** skill directories,
+   - `exclude` mode: the ignore block **names all nine** skill directories,
      and `git -C <TARGET> check-ignore -q .github/skills/dev-do` and
      `... scratch` both exit 0.
    - `include` mode: `git -C <TARGET> check-ignore -q scratch` exits 0, and
      `... .github/skills/dev-do` exits non-zero (it must *not* be ignored).
    - `git -C <TARGET> status --porcelain` matches the mode: in `exclude`
      mode nothing new appears under `.github/skills/dev-*/` or `scratch/`;
-     in `include` mode the eight skill directories appear as untracked and
+     in `include` mode the nine skill directories appear as untracked and
      ready to stage.
    - The `## GitHub Integration` sentinel block appears **exactly once** in
      `<TARGET>\AGENTS.md`, with an `Enabled` row matching step 3.5's answer.
@@ -404,7 +408,7 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      listed.
 
 10. **Report back.** State: the resolved `TARGET`; the git mode and which
-    file received the rules (plus any mode migration); the eight skills
+    file received the rules (plus any mode migration); the nine skills
     copied; the GitHub integration answer and every value recorded for it;
     the `AGENTS.md` outcome (created / audited) with every
     outstanding `{TBD}`; a compact summary of the detected stack; and the
@@ -466,7 +470,7 @@ when `Enabled` is `no` there is no such row to disagree.
 - **Idempotent.** Re-running must not duplicate rules and must cleanly
   refresh the copied skills. The sentinel block is what makes that possible;
   always write it.
-- **Never copy `dev-setup` into the target.** Only the eight worker skills
+- **Never copy `dev-setup` into the target.** Only the nine worker skills
   are installed. `dev-setup` lives solely in the canonical source.
 - **A description over 1024 characters makes a skill invisible.** The skill
   is dropped silently at session start — no error, no entry in the agent's
