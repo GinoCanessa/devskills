@@ -85,13 +85,15 @@ You are the loop's **conductor**. That means:
    stage to fan out at all.
 
 5. **`review_iterations`** *(optional, default `1`)* — how many
-   review-and-remediate cycles run after the execution stage. One
-   iteration is a full `dev-review` pass **plus** remediation of what it
-   raised, so the default leaves an `analysis.md` written *before* its
-   own fixes; `2` re-reviews the remediated tree. **`0` skips the review
-   tail entirely and ends the run at `dev-do`.** This is the only
-   spelling — there is deliberately no flag-style alias for `0`, so that
-   there is exactly one name per argument across the whole loop.
+   review-and-remediate cycles run after the execution stage. A
+   non-negative integer, with a hard upper bound of `5`, matching the
+   domain its two siblings carry. One iteration is a full `dev-review`
+   pass **plus** remediation of what it raised, so the default leaves an
+   `analysis.md` written *before* its own fixes; `2` re-reviews the
+   remediated tree. **`0` skips the review tail entirely and ends the
+   run at `dev-do`.** This is the only spelling — there is deliberately
+   no flag-style alias for `0`, so that there is exactly one name per
+   argument across the whole loop.
 
 ## What This Skill Owns
 
@@ -136,15 +138,23 @@ The run, in order:
 
 1. Resolve the slot directory to an absolute path and echo it. Resolve
    `SKILLS_SOURCE` and confirm every stage skill file exists.
-2. Read the repository's `AGENTS.md` for conventions and commands, with
+2. **Check the slot for a source artifact of the other kind.** A
+   `request` run into a slot that already holds a `bugreport.md`, or a
+   `report` run into one holding a `featurerequest.md`, is a
+   **blocker**: hand back and name both files. Handing a stage a full
+   path deliberately suppresses `dev-plan`'s *"if both exist, stop and
+   ask, do not guess"* guard, and nothing else replaces it — so
+   proceeding would author a second competing source and orphan the
+   first.
+3. Read the repository's `AGENTS.md` for conventions and commands, with
    the documented fallback to `README.md` / `CONTRIBUTING.md`, and say
    which source you used.
-3. Determine the resume point from the artifacts already on disk, and
+4. Determine the resume point from the artifacts already on disk, and
    rebuild the assumption ledger from them — see § *Resume*.
-4. Run each incomplete stage in chain order, one dispatch at a time,
+5. Run each incomplete stage in chain order, one dispatch at a time,
    classifying each outcome from the artifact on disk.
-5. Run the review tail `review_iterations` times.
-6. Print the closing report.
+6. Run the review tail `review_iterations` times.
+7. Print the closing report.
 
 Three properties of the chain are load-bearing:
 
@@ -162,8 +172,7 @@ Three properties of the chain are load-bearing:
 ## Stage Dispatch
 
 **Resolve the stage skills once.** `SKILLS_SOURCE` is the parent
-directory of this skill's own directory — the same resolution
-`dev-setup` § *Inputs* uses — and each stage's file is
+directory of this skill's own directory, and each stage's file is
 `<SKILLS_SOURCE>\<skill-name>\SKILL.md`. Confirm every file the run
 needs exists before the first dispatch. A missing stage file is a
 blocker: hand back and name it.
@@ -175,7 +184,7 @@ because a fresh sub-agent re-reads the `SKILL.md` from disk — a
 re-dispatch *is* the instruction reload that `dev-do`'s
 self-modification yield asks for.
 
-Hand each stage sub-agent exactly four things:
+Hand each stage sub-agent exactly five things:
 
 1. **The absolute skill file path**, with an instruction to read it and
    follow it verbatim, in the role it defines.
@@ -196,8 +205,16 @@ Hand each stage sub-agent exactly four things:
    | Execution | `dev-do` | `<slot>\plan.md` |
    | Review | `dev-review` | `<slot>\analysis.md` |
 
-3. **The standing directive**, in full — see § *The Standing Directive*.
-4. **`max_subagents`, unchanged**, when that stage documents the input,
+3. **The content, verbatim — the authoring stage only.** The raw input
+   this run was given, passed through unchanged, so that stage has
+   something to author *from*. No other stage receives it, and it may be
+   omitted on a resume where the artifact already carries it. Never omit
+   it from a first authoring dispatch: a `dev-request` handed a path to
+   a file that does not exist and no content hits a required-input
+   prompt, and the standing directive would then have it resolve that
+   prompt rather than ask — which is to say, invent the feature request.
+4. **The standing directive**, in full — see § *The Standing Directive*.
+5. **`max_subagents`, unchanged**, when that stage documents the input,
    together with any other input that stage documents and this run
    fixes. The execution stage in particular runs with **no
    checkpointing**, because this run never pauses between phases.
@@ -205,27 +222,54 @@ Hand each stage sub-agent exactly four things:
 A stage sub-agent runs with the **same model configuration as you**, per
 `AGENTS.md` § *Agent guardrails*.
 
+**Record a baseline immediately before every dispatch.** Read the
+artifact that dispatch operates on and record its **content hash** — or
+record that the artifact is **absent**. On return, re-read it and
+compare. Without a baseline the byte-identical branch below is
+unimplementable: a dispatch hands over a path and regains control on
+return, and never reads the file in between. **Absent both before and
+after counts as unchanged**, which is what covers an authoring stage
+that never created its file at all.
+
 **Classify every stage's outcome from the artifact on disk, never from
 the sub-agent's narrative.** A sub-agent that simply stopped is
-indistinguishable from one that finished unless the file says so.
+indistinguishable from one that finished unless the file says so. Take
+these branches in order, **first match wins**:
 
-- **An authoring stage** is judged by re-reading the artifact's `Status`
-  row.
-- **The plan stage** is judged by re-reading `plan.md`'s `Status` row.
-- **The execution stage** is judged phase by phase: top-level
-  `Status: Complete` with every phase `Complete` → advance; any phase
-  marked `Blocked` → the diagnose-then-resume path in § *Retry and
-  Hand-Back*; phases still `Pending` with no `Blocked` marker → the
-  stage yielded early, so re-dispatch it to continue.
+1. **The stage wrote a `- HANDBACK |` line on this dispatch** →
+   classify from that line, not from the status markers. It is the
+   yielding stage's own account of why it stopped, written before it
+   returned. Read it out of the section § *The Standing Directive* names
+   for that artifact, carry its `attempt <k>` forward as that stage's
+   attempt count, and quote its reason on hand-back. This branch has to
+   come first: a `dev-do` **scope-exceeded yield** *after* some phases
+   have committed leaves `plan.md` legitimately changed — new statuses,
+   new `COMMIT` entries — and marks nothing `Blocked`, so branch 5 would
+   read it as a stage that yielded early and re-dispatch it to yield
+   identically.
+2. **The artifact is byte-identical to the baseline** → **blocker**.
+   Hand back and name it. Scope this to *unchanged from what this
+   dispatch was handed*, never to "the stage had nothing to do":
+   § *Resume* skips a complete stage by its status marker, so a stage
+   with nothing to do is never dispatched at all. The likeliest instance
+   is the most damning — `dev-do`'s pre-flight gate refuses a non-empty
+   index and is forbidden to edit `plan.md` at all, so disk still reads
+   `Ready-to-execute` with every phase `Pending`, and without this
+   branch the rule to classify from disk makes a blocker this skill
+   already lists structurally undetectable.
+3. **An authoring stage** is judged by re-reading the artifact's `Status`
+   row.
+4. **The plan stage** is judged by re-reading `plan.md`'s `Status` row.
+5. **The execution stage** is judged phase by phase: top-level
+   `Status: Complete` with every phase `Complete` → advance; any phase
+   marked `Blocked` → the diagnose-then-resume path in § *Retry and
+   Hand-Back*; phases still `Pending` with no `Blocked` marker → the
+   stage yielded early, so re-dispatch it to continue.
 
-**A `- HANDBACK |` line the stage wrote on this dispatch is evidence
-too, and it outranks the status markers** — it is the yielding stage's
-own account of why it stopped, written before it returned. Read it out
-of the section § *The Standing Directive* names for that artifact, carry
-its `attempt <k>` forward as that stage's attempt count, and quote its
-reason on hand-back. A stage that yields without one was either
+A stage that yields **without** a `- HANDBACK |` line was either
 forbidden to write or had nowhere yet to write to; both carve-outs are
-named there, and both are why the line's absence never proves success.
+named in § *The Standing Directive*, and both are why that line's
+absence never proves success. Branch 2 is what catches them.
 
 Never edit an artifact to fix a stage's work. Re-dispatch the stage.
 
@@ -266,6 +310,15 @@ artifact as settled content. It does not ask. This covers:
   verdict it just commissioned.
 - **`dev-review`'s scope prompt**, in the case where it fires at all. It
   does not fire when `plan-slot` scope resolves.
+- **An authoring stage advances `Status` to Ready-for-plan once no open
+  question remains.** Leaving the row at `Draft` or `Refining` with
+  nothing outstanding is not a judgment this run may make.
+  `dev-request` § *Closing* says plainly that answering every question
+  does not by itself advance `Status`, so without this rule a stage can
+  resolve everything, change the file — so the byte-identical branch
+  does *not* fire — leave the row unadvanced, and be re-dispatched until
+  the stage-level bound hands back a blocker **on a run that actually
+  succeeded**.
 
 ### Always resolved to *decline* — never on the merits
 
@@ -294,10 +347,11 @@ judges otherwise".
 - **"Never invent a build or test command."** An undocumented command is
   a **blocker**, not an assumption. It is the one question whose right
   answer is to stop.
-- **`dev-do`'s yield conditions 1, 2, 5, and 6** — a blocked phase, a
-  decision that materially exceeds the plan's scope, a pre-flight
-  inconsistency, and a change to the currently executing skill. These
-  are safety gates, not preference prompts. Suppressing condition 5 in
+- **`dev-do`'s blocked-phase, scope-exceeded, pre-flight, and
+  self-modification yield conditions** — cited by name rather than by
+  number, because inserting one condition into that skill would
+  renumber the rest and silently invalidate this list. These are safety
+  gates, not preference prompts. Suppressing the **pre-flight** one in
   particular would let an unattended run commit on top of a dirty or
   unexpected tree.
 - **Every GitHub prohibition**, every **ownership** rule, every
@@ -435,21 +489,28 @@ exists proves a stage started, not that it finished.
   reads `Ready-for-plan`.
 - **Approach** is complete when `approach.md` exists and carries a
   `## Selected` section.
-- **Plan** is complete when `plan.md`'s `Status` row reads
-  `Ready-to-execute` or a later value.
+- **Plan** is incomplete **only** when the `Status` row of `plan.md`
+  reads `Draft`; any other value means the plan stage is done. One
+  value, no ordering claim, and nothing to rot when `dev-plan` gains a
+  status — where "`Ready-to-execute` or a later value" would assert an
+  ordering that `Blocked` has no position in.
 - **Execution** is complete when the plan's top-level `Status` reads
   `Complete` **and** every phase's `**Status:**` reads `Complete`.
 - **Review tail** progress is the highest `<k>` carried by a
   `- REVIEW | iteration: <k> | complete` marker in `plan.md`'s
   `## Progress Log` — see § *The Review Tail*.
 
-A `Blocked` marker anywhere means resume **re-enters** that stage rather
-than skipping past it. Rebuild the assumption ledger from the artifacts
-before continuing, read any `- HANDBACK |` line those same sections
-carry so the earlier attempt is diagnosed rather than repeated, and say
-in your first response which stage you resumed at and why. A stage that
-handed back **undurably** left no line at all; say so rather than
-reporting a clean history.
+A `Blocked` marker means resume **re-enters** the stage that owns it
+rather than skipping past it — and where `plan.md` is concerned, that
+is scoped to the **phase** markers only. A plan whose *top-level*
+`Status` reads `Blocked` because `dev-do` stopped mid-execution belongs
+to the execution stage; re-entering the plan stage would re-dispatch
+`dev-plan` against a plan that is already being executed. Rebuild the
+assumption ledger from the artifacts before continuing, read any
+`- HANDBACK |` line those same sections carry so the earlier attempt is
+diagnosed rather than repeated, and say in your first response which
+stage you resumed at and why. A stage that handed back **undurably**
+left no line at all; say so rather than reporting a clean history.
 
 ## Retry and Hand-Back
 
@@ -459,15 +520,24 @@ phase cannot spend a long plan's whole budget. The bound is internal and
 is deliberately **not** a caller knob: a phase that keeps failing is a
 wrong phase, and retrying it harder will not make it right.
 
+**A stage gets three dispatches in total, for the same reason.** These
+are **two different counters**, and conflating them is what lets a run
+spin. The per-phase bound is scoped to a *failing* `Blocked` phase, so
+it counts nothing at all for a stage that yields early, hands back
+without a `Blocked` marker, or returns unchanged — and those are exactly
+the cases a re-dispatch loop is made of. Count dispatches per stage,
+across resumes, using the `attempt <k>` on that stage's `- HANDBACK |`
+line; a stage that exhausts three is a blocker.
+
 **A retry is a diagnose-then-resume dispatch, never a bare
-re-dispatch.** `dev-do` § *Iteration Mode* resumes a `Blocked` phase
-only when the blocker is demonstrably resolved, and otherwise reports it
-unchanged — so a bare re-dispatch would burn all three attempts without
-ever retrying anything. Attempt *k* hands the stage sub-agent the
-recorded `Blocked` reason **and** an explicit instruction to diagnose
-and resolve the cause **first**, then resume the phase. Without that the
-bound absorbs nothing — not the typo, not the missing import, not the
-stale artifact it exists for.
+re-dispatch.** `dev-do` § *Iteration Mode (Recovery Path)* resumes a
+`Blocked` phase only when the blocker is demonstrably resolved, and
+otherwise reports it unchanged — so a bare re-dispatch would burn all
+three attempts without ever retrying anything. Attempt *k* hands the
+stage sub-agent the recorded `Blocked` reason **and** an explicit
+instruction to diagnose and resolve the cause **first**, then resume the
+phase. Without that the bound absorbs nothing — not the typo, not the
+missing import, not the stale artifact it exists for.
 
 **Each attempt is recorded durably by the stage itself**, using
 `dev-do`'s existing log form:
@@ -497,7 +567,13 @@ blockers:
 - a failure the run cannot explain;
 - a repository state it cannot safely act on, including anything
   `dev-do`'s pre-flight gate refuses;
-- a phase that exhausts its three attempts;
+- a stage that returns with its artifact byte-identical to the baseline
+  recorded before the dispatch;
+- a `dev-do` **scope-exceeded yield** — non-overridable, marking nothing
+  `Blocked` and requiring no `NOTE`, so nothing else in this list would
+  catch it;
+- a phase that exhausts its three attempts, or a stage that exhausts its
+  three dispatches;
 - a missing stage skill file;
 - a change the run made to **this** skill.
 
@@ -516,8 +592,8 @@ raised. `review_iterations` counts iterations, not passes.
 
 **Scope resolves itself.** `dev-review` derives `plan-slot` scope from
 the plan's `COMMIT` entries without asking. When the plan carries **no**
-`COMMIT` entries there is nothing to review: skip the tail, record that
-you skipped it and why, and say so in the closing report.
+`COMMIT` entries there is nothing to review. Skip the tail, and then
+report it in the closing report, naming why.
 
 **Remediation covers Blocker *and* High findings, not Blockers alone.**
 That is not a choice this skill gets to make: `dev-plan` § *Iteration
@@ -589,9 +665,16 @@ reviews.
 
 Print one short line per stage entered, per artifact written, and per
 assumption recorded. The user who invoked this skill is watching the
-session even though they are not answering prompts, and the progress
-output is their only chance to interrupt a run they disagree with before
-it reaches commits. Write it for a reader.
+session even though they are not answering prompts, so write it for a
+reader.
+
+**Those lines land at stage boundaries**, because that is where you
+regain control. The execution stage in particular is **atomic from your
+side**: `dev-do` runs every phase and makes every commit before it
+returns, so no line of yours can appear between two phases. A user who
+wants a gate there has two options, and neither of them is this skill —
+drive the loop by hand, or invoke `dev-do` directly and use its
+`checkpoint_every` input.
 
 Keep it to one line each. A stage's own output is that stage's business;
 you are reporting the shape of the run, not narrating it.
@@ -612,7 +695,8 @@ In this order:
    single review point.
 5. **Standing findings** — anything `dev-review` raised that the
    iteration budget did not close, at the same prominence as the
-   ledger, plus which iteration the surviving `analysis.md` reflects.
+   ledger, plus which iteration the surviving `analysis.md` reflects —
+   or state that the review tail did not run, and why.
 6. **Next steps**, named as available to the **user** and never
    performed: `dev-issue` to publish the request or report and attach
    the plan, `dev-pr-open` to push the branch and open the pull request.
