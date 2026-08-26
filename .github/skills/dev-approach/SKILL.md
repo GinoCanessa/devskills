@@ -165,20 +165,38 @@ writes exactly four files and no others.
 3. **Re-invocation check.** If any `approach*.md` already exists in the
    slot, stop and follow § *Re-Invocation Modes* before doing anything
    else. Do not overwrite silently.
-4. **Triviality check.** Form a view on whether the request warrants
-   three approaches, and follow § *Triviality Check*. This is a
-   proposal to the user, never a decision you make alone.
+4. **Write `approach.md`'s skeleton, then run the triviality check.**
+   Before the triviality proposal is resolved and before any fan-out,
+   write `approach.md` carrying nothing but its metadata table — with
+   `| Selected | {TBD: judgment pending} |` — an empty `## Notes`
+   section, and the in-progress line § *Judgment File Format*
+   prescribes. Record the step-3 re-invocation-mode decision and this
+   step's triviality decision into that `## Notes` section as each one
+   is made. Then form a view on whether the request warrants three
+   approaches, and follow § *Triviality Check*. That view is a proposal
+   to the user, never a decision you make alone.
+
+   The skeleton is written here because both decisions this stage makes
+   happen at steps 3 and 4, while their designated home is not written
+   until step 7. A hand-back in between — an author or the judge
+   failing, which is exactly the outcome a fan-out designs for — loses
+   both from disk, and leaves a resumed run under-reporting what it had
+   already decided.
 5. **Fan out the three authors** as isolated sub-agents, honoring
    `max_subagents`. Each writes its own file directly. See
    § *Sub-Agent Use*.
 6. **Run the judge** as a separate sub-agent, only after all three
    authors have finished. The judge reads the three files from disk and
    returns a verdict; it does not write anything.
-7. **Write `approach.md`** yourself, transcribing the judge's verdict
-   into the format below. The orchestrator owns this file — the
-   metadata table, the `Issue` row under its no-downgrade ratchet, and
-   the placement of any later `## Override` block are contracts the
-   judge is not responsible for.
+7. **Fill in `approach.md`** yourself, transcribing the judge's verdict
+   into the format below **on top of the skeleton step 4 already
+   wrote**: replace the `{TBD: judgment pending}` row with the
+   selection, drop the in-progress line, add the judgment sections, and
+   **preserve whatever `## Notes` already holds** by appending to it
+   rather than writing the file from nothing. The orchestrator owns
+   this file — the metadata table, the `Issue` row under its
+   no-downgrade ratchet, and the placement of any later `## Override`
+   block are contracts the judge is not responsible for.
 8. **Offer the user an override.** See § *User Override*. Declining is
    the normal outcome and changes nothing.
 9. **Report back** with: the resolved source path, the four output
@@ -328,6 +346,26 @@ from it — and everything above it stays readable, so the disagreement
 survives on the record.}
 ```
 
+**A file with no `## Selected` section is an in-progress skeleton, not
+a selection.** Workflow step 4 writes that skeleton before any fan-out,
+so this stage's decisions have a durable home from the moment they are
+made; step 7 fills the judgment in on top of it. The skeleton carries
+the metadata table with `| Selected | {TBD: judgment pending} |`, an
+empty `## Notes` section, and — immediately under the title, where no
+reader can miss it — this line:
+
+```text
+> **In progress.** The judge has not run yet. This file is not a
+> selection; do not plan from it.
+```
+
+The marker is not decoration. `dev-plan` tests for the **presence** of
+`approach.md` to decide it has a decided shape to plan from, so a
+skeleton left behind by a hand-back between steps 4 and 7 would
+otherwise read as a selection with nothing to select. The missing
+`## Selected` heading is the machine-readable half of the answer; the
+line above is the half a human sees first.
+
 ## Sub-Agent Use
 
 - **The three authors run as isolated sub-agents**, in parallel where
@@ -388,9 +426,18 @@ rather than an oversight.
 
 ## Re-Invocation Modes
 
-When the slot already holds one or more `approach*.md` files, **do not
-guess what the user meant**. Report what you found — which files exist,
-what `approach.md` currently selects — and offer exactly three modes:
+**First, rule out an interrupted first run.** An `approach.md` with no
+`## Selected` section and no author files beside it is the skeleton
+workflow step 4 writes, left behind by a hand-back before the judge
+ran. That is an **interrupted first run**, not a re-invocation:
+continue from step 4 without prompting. None of the three modes below
+describes it, because all three presuppose that `approach-a.md`,
+`approach-b.md`, and `approach-c.md` already exist.
+
+Otherwise, when the slot already holds one or more `approach*.md`
+files, **do not guess what the user meant**. Report what you found —
+which files exist, what `approach.md` currently selects — and offer
+exactly three modes:
 
 - **regenerate** — discard the existing three and author them from
   scratch. For when a new constraint arrived and the old space is the
@@ -404,10 +451,14 @@ what `approach.md` currently selects — and offer exactly three modes:
   unchanged. For when the authors were fine and the judge called it
   wrong.
 
-Every mode rewrites `approach.md`. An existing `## Override` block does
-**not** survive a re-judgment: the user's disagreement was with a
-verdict that no longer exists. Say so before you overwrite, and
-re-offer the override afterwards.
+Every mode rewrites the **judgment** in `approach.md`, and every mode
+**preserves** its `## Notes` section. That section is where this
+stage's own decisions are recorded as they are made, so a rewrite that
+discarded it would destroy the record a resumed run rebuilds from. An
+existing `## Override` block is different, and does **not** survive a
+re-judgment: the user's disagreement was with a verdict that no longer
+exists. Say so before you overwrite, and re-offer the override
+afterwards.
 
 This follows the precedent `dev-plan` sets for a slot holding both a
 `featurerequest.md` and a `bugreport.md`: stop and ask.
