@@ -218,6 +218,15 @@ indistinguishable from one that finished unless the file says so.
   Hand-Back*; phases still `Pending` with no `Blocked` marker → the
   stage yielded early, so re-dispatch it to continue.
 
+**A `- HANDBACK |` line the stage wrote on this dispatch is evidence
+too, and it outranks the status markers** — it is the yielding stage's
+own account of why it stopped, written before it returned. Read it out
+of the section § *The Standing Directive* names for that artifact, carry
+its `attempt <k>` forward as that stage's attempt count, and quote its
+reason on hand-back. A stage that yields without one was either
+forbidden to write or had nowhere yet to write to; both carve-outs are
+named there, and both are why the line's absence never proves success.
+
 Never edit an artifact to fix a stage's work. Re-dispatch the stage.
 
 ## The Standing Directive
@@ -301,8 +310,85 @@ An answer lands in the stage's artifact as **settled content, in the
 section it belongs to, written as a decision the artifact made.** Never
 as *"the user said"* — the user said nothing. Never as a question left
 open. A later reader must be able to see that a choice was made and what
-it rested on. Each answer is *additionally* recorded as a ledger line;
-see below.
+it rested on. Each answer is *additionally* recorded as a ledger line —
+see *The durable record* below.
+
+### The durable record
+
+Two kinds of line reach disk from a stage, and the **owning stage writes
+both into its own artifact**; you never write either one. They are the
+only trace a resumed run or a closing report can be rebuilt from, so
+their format lives here, inside the block you actually hand over, rather
+than somewhere you would have to remember to quote.
+
+**The assumption line.** One per question the stage resolved under this
+directive, carrying a fixed prefix so the whole ledger is one search
+away:
+
+```text
+- ASSUMPTION | stage: <stage> | <question> — <answer> (<rationale>)
+```
+
+**The hand-back line.** One per dispatch that yields, written by the
+**yielding stage** before it returns, into the same section of the same
+artifact:
+
+```text
+- HANDBACK | stage: <stage> | attempt <k> | <reason>
+```
+
+Both follow the labelled-entry convention `plan.md`'s `## Progress Log`
+already uses, **including the leading `- `**. Both go in a named section
+of the stage's own artifact:
+
+| Artifact | Section |
+|-|-|
+| `featurerequest.md` | `## Assumptions` |
+| `bugreport.md` | `## Notes` |
+| `approach.md` | `## Notes` |
+| `plan.md` | `## Notes` |
+| `analysis.md` | `## Notes` |
+
+`featurerequest.md` is the only slot artifact with an `## Assumptions`
+section; the rest carry a `## Notes` section and no assumptions section,
+so that is where their lines go. The **prefix**, not the heading, is
+what makes them findable. Do not collapse the table to a single
+`plan.md` destination: `plan.md` does not exist during the authoring and
+approach stages, `dev-review` may not write it, and `dev-approach` may
+not write the source artifact.
+
+**Two carve-outs on the hand-back line, both mandatory.**
+
+- **A stage whose own skill forbids writing at the moment it yields
+  writes no `HANDBACK` line.** The case that matters is `dev-do`'s
+  **pre-flight refusal**: on a non-empty index it must stop without
+  editing `plan.md` at all. The never-overridden rule wins — this
+  directive never buys a write past a safety gate, and obeying it here
+  would mean writing to a plan on a dirty tree, which is exactly what
+  that gate exists to prevent. The byte-identical branch in § *Stage
+  Dispatch* is what catches this outcome instead.
+- **A stage whose artifact does not yet exist has nowhere to write.**
+  `dev-request` can yield before `featurerequest.md` exists, `dev-plan`
+  before `plan.md`, and `dev-review` writes `analysis.md` wholesale at
+  the end. Such a hand-back is **undurable**: require the stage to say
+  so in what it returns, and report it as undurable in the closing
+  report and on resume — never silently. This is the earliest and least
+  diagnosable class of failure there is, and it is the one the line
+  otherwise no-ops on.
+
+**Durability differs by stage, because two artifacts are rewritten
+wholesale by the skill that owns them.**
+
+- **`dev-review` overwrites `analysis.md` on every pass.** Its one
+  overridable prompt is the scope prompt, which cannot fire when
+  `plan-slot` scope resolves — the normal case here — so the review
+  stage normally writes no line at all. Any line it *does* write must be
+  **re-emitted** by the next pass, which is the only thing that keeps an
+  overwrite from destroying it.
+- **Every `dev-approach` mode rewrites `approach.md`.** That skill
+  preserves the section its lines live in across a rewrite, which is
+  what gives the two decisions this directive forces in that stage a
+  home surviving both a re-judgment and a hand-back.
 
 ## The Assumption Ledger
 
@@ -318,27 +404,11 @@ point.
 **1. Every assumption is written to a greppable, named location in the
 artifact the owning skill already writes.** The owning stage writes it,
 as part of the pass that made the decision; you never write it yourself.
-The line carries a fixed prefix, so the whole ledger is one search away:
-
-```text
-ASSUMPTION | stage: <stage> | <question> — <answer> (<rationale>)
-```
-
-It goes in a named section of that stage's own artifact, following the
-labelled-entry convention `plan.md`'s `## Progress Log` already uses:
-
-| Artifact | Section |
-|-|-|
-| `featurerequest.md` | `## Assumptions` |
-| `bugreport.md` | `## Notes` |
-| `approach.md` | `## Notes` |
-| `plan.md` | `## Notes` |
-| `analysis.md` | `## Notes` |
-
-`featurerequest.md` is the only slot artifact with an `## Assumptions`
-section; the rest carry a `## Notes` section and no assumptions section,
-so `## Notes` is where their ledger lines go. The **prefix**, not the
-heading, is what makes the ledger findable.
+Its exact line format and its destination table live in § *The Standing
+Directive*, under *The durable record*, because that block is what a
+stage sub-agent is actually handed — a directive excerpted without the
+prefix would teach the stage nothing, nothing would reach disk, and a
+resumed run would have nothing to rebuild from.
 
 The ledger line is **in addition to** the settled content the answer
 becomes, never a substitute for it. The content is what a reader of the
@@ -347,7 +417,8 @@ artifact needs; the line is what the ledger is rebuilt from.
 **2. Resume rebuilds the ledger from disk** before continuing, by
 reading those sections out of the artifacts that already exist. A
 resumed run therefore closes with the assumptions made *before* the
-hand-back as well as after.
+hand-back as well as after, together with any `- HANDBACK |` line those
+same sections carry.
 
 This is the closing report's most prominent section. It is never
 summarized away, never truncated, and never folded into a sentence about
@@ -368,14 +439,17 @@ exists proves a stage started, not that it finished.
   `Ready-to-execute` or a later value.
 - **Execution** is complete when the plan's top-level `Status` reads
   `Complete` **and** every phase's `**Status:**` reads `Complete`.
-- **Review tail** progress is read from `analysis.md` and the plan's
-  remediation phases — see § *The Review Tail* for the per-iteration
-  test.
+- **Review tail** progress is the highest `<k>` carried by a
+  `- REVIEW | iteration: <k> | complete` marker in `plan.md`'s
+  `## Progress Log` — see § *The Review Tail*.
 
 A `Blocked` marker anywhere means resume **re-enters** that stage rather
 than skipping past it. Rebuild the assumption ledger from the artifacts
-before continuing, and say in your first response which stage you
-resumed at and why.
+before continuing, read any `- HANDBACK |` line those same sections
+carry so the earlier attempt is diagnosed rather than repeated, and say
+in your first response which stage you resumed at and why. A stage that
+handed back **undurably** left no line at all; say so rather than
+reporting a clean history.
 
 ## Retry and Hand-Back
 
@@ -406,6 +480,14 @@ That is what makes `plan.md` name the phase that failed *and what was
 tried*, rather than leaving it in a transcript that dies with the
 session.
 
+**A stage that yields also writes its own `- HANDBACK |` line**, in the
+form and destination § *The Standing Directive* fixes, before it
+returns — so the reason survives the session that produced it, and so a
+run resumed tomorrow can see that attempt 1 already failed the same way.
+The two carve-outs there are the only exceptions, and the second of them
+makes the hand-back **undurable**, which you report as undurable rather
+than passing over in silence.
+
 **A blocker is a condition the run cannot proceed *through*.** It is
 never merely a question the run would prefer a human answered. These are
 blockers:
@@ -420,11 +502,12 @@ blockers:
 - a change the run made to **this** skill.
 
 **On hand-back, report:** the stage and the phase, the attempts and what
-each one tried, the evidence, the ledger rebuilt so far, and **the exact
-command that resumes the run**. Quote that command in **full-path
-form**, never as a bare slot number — a number re-expands against the
-date of whatever day the user picks the work back up, which is not
-necessarily today.
+each one tried, the evidence, the ledger rebuilt so far, whether the
+stage's own `- HANDBACK |` line reached disk or the hand-back was
+undurable, and **the exact command that resumes the run**. Quote that
+command in **full-path form**, never as a bare slot number — a number
+re-expands against the date of whatever day the user picks the work back
+up, which is not necessarily today.
 
 ## The Review Tail
 
@@ -438,9 +521,11 @@ you skipped it and why, and say so in the closing report.
 
 **Remediation covers Blocker *and* High findings, not Blockers alone.**
 That is not a choice this skill gets to make: `dev-plan` § *Iteration
-Mode* and `dev-review` § *Next Steps* both name Blocker and High as the
-fold-back set, and a narrower rule here would contradict the two skills
-this stage dispatches. Lower severities are reported, not remediated.
+Mode* names Blocker and High as the fold-back set, and `dev-review`
+§ *Report Format* prescribes an `analysis.md` whose `## Next Steps`
+section says the same. A narrower rule here would contradict the two
+skills this stage dispatches. Lower severities are reported, not
+remediated.
 
 **Remediation runs as a `dev-plan` iteration pass** handed
 `analysis.md`, which appends new phases to `plan.md`. Those phases
@@ -457,16 +542,38 @@ unnumbered heading would break the log form and change an existing
 skill's output format. A `dev-do` pass then executes those phases under
 its ordinary phase-commit protocol.
 
-**A clean iteration must still leave a marker.** A review that raises no
-Blocker or High appends no phases, so remediation phases alone cannot
-distinguish "iteration *k* ran clean" from "iteration *k* never ran" —
-and guessing wrong burns a full two-pass review and overwrites
-`analysis.md` again. Read `analysis.md`'s `## Scope` section instead:
-its **Commits** bullet lists the SHAs that were reviewed. **Iteration
-*k* is complete when that commit set equals the plan's current set of
-`COMMIT` entries.** The `| Scope |` metadata row records a counted
-description rather than the SHAs themselves, so it is a cross-check on
-the count, not the test.
+**Every iteration must leave a marker, clean or not.** A review that
+raises no Blocker or High appends no phases, so remediation phases alone
+cannot distinguish "iteration *k* ran clean" from "iteration *k* never
+ran" — and guessing wrong burns a full two-pass review and overwrites
+`analysis.md` again. The **`dev-plan` remediation stage** therefore
+appends one line to `plan.md`'s `## Progress Log` on **every**
+iteration, clean or not, before it returns:
+
+```text
+- REVIEW | iteration: <k> | complete
+```
+
+**Iteration *k* is complete when a marker naming `<k>` is present**, and
+the tail's progress is the highest `<k>` recorded. Keep `analysis.md`'s
+`## Scope` **Commits** bullet as a cross-check on what the surviving
+analysis actually saw — never as the completeness test. Remediation
+appends new `COMMIT` entries to the plan by construction, so the two
+sets diverge for every iteration that raised a finding, and any test
+comparing them is satisfiable only in the clean case. The `| Scope |`
+metadata row records a counted description rather than the SHAs
+themselves, so it is a cross-check on the count.
+
+Two properties of the marker are load-bearing. It carries **no
+`phase: <n>` key**, because a clean iteration appends no phases and so
+has no phase number to name, and because a writer that is not `dev-do`
+must not inject a phase-keyed entry into a log `dev-do` § *Iteration
+Mode (Recovery Path)* reads as recovery evidence. And it **names its
+writer explicitly** — the remediation `dev-plan` pass — because "the
+remediation pass" does not exist in the clean case the marker was
+invented to disambiguate. The form is a fourth labelled entry in a log
+`dev-plan` owns and documents, so it extends *that* skill's vocabulary
+and changes nothing about `dev-do`'s.
 
 **`dev-review` overwrites `analysis.md` on every pass.** With
 `review_iterations: 2` the surviving file is the second pass's. That is
