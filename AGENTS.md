@@ -172,6 +172,86 @@ change to a skill done:
    no feedback loop that would catch it later. `dev-setup` runs the same
    check against the skills it installs.
 
+8. **Cross-skill section citations resolve.** A `` `dev-x` § *Section* ``
+   citation must name a real, navigable heading in the cited skill, and a
+   bare `§ *Section*` pointer must name one in its own file. Nothing
+   guarded this before `dev-complete`, which made cross-skill coupling
+   the densest surface in the repository. This must return nothing, from
+   both arms:
+
+   ```powershell
+   $H = @{}
+   Get-ChildItem .github\skills -Directory | ForEach-Object {
+     $raw  = Get-Content (Join-Path $_.FullName 'SKILL.md') -Raw -Encoding utf8
+     $body = [regex]::Replace($raw, '(?ms)^```.*?^```', '')
+     $H[$_.Name] = @([regex]::Matches($body, '(?m)^#{2,4}\s+(.+?)\s*$') |
+                     ForEach-Object { $_.Groups[1].Value })
+   }
+   Get-ChildItem .github\skills -Recurse -File -Filter SKILL.md | ForEach-Object {
+     $n    = $_.Directory.Name
+     $flat = (Get-Content $_.FullName -Raw -Encoding utf8) -replace '\s+', ' '
+     # arm 1 — cross-skill citations
+     [regex]::Matches($flat, '`(dev-[a-z-]+)`[^`§]{0,40}§\s+\*([^*]+)\*') |
+       ForEach-Object {
+         $t = $_.Groups[1].Value; $s = $_.Groups[2].Value.Trim()
+         if (-not $H.ContainsKey($t))    { "$n -> $t : NO SUCH SKILL" }
+         elseif ($H[$t] -notcontains $s) { "$n -> $t § *$s* : NO SUCH SECTION" }
+       }
+     # arm 2 — intra-file pointers, after removing every file-qualified one
+     $bare = [regex]::Replace($flat, '`[^`]+`[^`§]{0,40}§\s+\*([^*]+)\*', '')
+     [regex]::Matches($bare, '§\s+\*([^*]+)\*') | ForEach-Object {
+       $s = $_.Groups[1].Value.Trim()
+       if ($H[$n] -notcontains $s) { "$n : § *$s* : NO SUCH SECTION (own file)" }
+     }
+   }
+   ```
+
+   Four design points a later reader will otherwise undo. **Fenced code
+   blocks are stripped before headings are collected**: a `SKILL.md`
+   embeds its artifact's template, and those `##` lines are *artifact*
+   sections, not sections of the skill. Counting them lets a citation
+   resolve against a heading no reader of that skill can navigate to —
+   and stripping them is what exposed one of the three breaks this check
+   was written to catch, `dev-complete` → `dev-review` § *Next Steps*,
+   whose target exists only inside `dev-review`'s report template. **The
+   match is exact**, with no prefix or substring fallback: a fuzzy check
+   is one that quietly stops catching things, and the substring form
+   would have passed two of the three real breaks. **Citations are
+   matched on whitespace-normalized whole-file text, never line by
+   line**, because prose wraps at 76 columns and a citation routinely
+   straddles a line break — one of the three breaks found here,
+   `dev-plan` → `dev-pr-open` § *Body assembly*, wraps mid-citation and
+   is invisible to any line-oriented scan. (A line-oriented variant does
+   catch the other two; the claim is that it misses this one, not that it
+   reports a clean run.) And **the skill-name gap is deliberate**:
+   `` [^`§]{0,40} `` rather than `\s+`, so that the
+   "…`dev-issue` **under its** § *The Issue Binding*" form is checked.
+   That form is live in three files, and a strict-adjacency regex
+   silently skips all of them; the relaxed form collects 12 citations
+   against the strict form's 9 and reports the same breaks and no others.
+
+   Two limits, so nobody reads more assurance into the check than it
+   gives. **A heading containing a literal `*` cannot be cited** —
+   `\*([^*]+)\*` captures only up to the inner asterisk and would report
+   a false break; `dev-complete` has one such heading today, and it is
+   uncited. And **arm 2 is best-effort**: stripping every file-qualified
+   citation first means a genuine intra-file pointer sitting within 40
+   characters of an unrelated backticked filename is skipped. Both are
+   false *negatives*, never false positives, which is the right direction
+   for a check that must never fail spuriously.
+
+   Paired **inspection**, in the style check 5's note uses: `dev-do`'s
+   yield conditions are cited **by name** — blocked-phase,
+   scope-exceeded, pre-flight, self-modification — in `dev-complete`
+   § *The Standing Directive*. Renumbering or renaming them is a breaking
+   change, so re-read that section in the same commit. No regex guards
+   it, because the citation is prose.
+
+   Every cross-skill citation points at a **worker** skill, so the check
+   passes unchanged inside a target repository, where `dev-setup` is
+   never installed. Preserving that property is why `dev-complete`'s one
+   `dev-setup` citation was dropped rather than left as provenance.
+
 ---
 
 ## Lint / format

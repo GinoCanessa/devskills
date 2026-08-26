@@ -352,7 +352,9 @@ gh pr list --repo <owner/repo> --head <branch> --state open `
   Open as a draft unless the `PR opens as draft` row is recorded as
   `no`.
 
-**Body assembly.** In **slot mode**, build it from, in order:
+### Body assembly
+
+In **slot mode**, build it from, in order:
 
 1. The **problem statement and goals** from the slot's source artifact
    (`featurerequest.md` / `bugreport.md`).
@@ -382,6 +384,8 @@ build it as:
 Never collapse several issues into one `Closes` line, and never pick a
 "primary" issue and drop the rest — an unreferenced issue silently
 stays open after merge.
+
+### Approval
 
 **Show the assembled title and body and get approval before either
 call.**
