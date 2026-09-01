@@ -52,6 +52,14 @@ A structured list of findings. For each one:
 - **File path and line range**, including the *test* file where the gap
   is, when there is one to point at.
 - **Severity**: Blocker, High, Medium, or Low.
+- **Confidence**: 0 to 100. 0 is a false positive or a problem that was
+  already there; 25 is unverified; 50 is verified but marginal; 75 is
+  verified, will be hit in practice, and the change's current approach
+  is insufficient; 100 is directly confirmed by evidence in the scope.
+  Score what you actually verified, not what you suspect — the
+  synthesizer numbers nothing below 50 and promotes nothing below 75 to
+  Blocker or High, so an inflated score loses you the finding rather
+  than winning it. Say in one clause what earns the score.
 - **What is untested or unverifiable**, concretely.
 - **A recommendation** — ideally the specific case to add, described
   precisely enough that someone can write it without asking you.
