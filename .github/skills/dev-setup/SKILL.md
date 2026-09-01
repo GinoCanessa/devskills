@@ -70,7 +70,8 @@ You are a **setup engineer**. That means:
    below. If the user did not state it, **ask** before writing anything.
 
 3. **Canonical source** *(implicit)* — the nine sibling skill directories
-   next to this one. Resolve:
+   next to this one, and the shared agent definitions beside them.
+   Resolve:
    - `SKILLS_SOURCE` = the parent directory of this `dev-setup` skill
      directory (it contains `dev-request/`, `dev-report/`,
      `dev-approach/`, `dev-plan/`, `dev-do/`, `dev-review/`,
@@ -78,9 +79,12 @@ You are a **setup engineer**. That means:
    - `BASE_ROOT` = `git -C <SKILLS_SOURCE> rev-parse --show-toplevel` when
      that succeeds; otherwise `SKILLS_SOURCE` with a trailing
      `.github\skills` stripped.
+   - `AGENTS_SOURCE` = `<BASE_ROOT>\.github\agents`.
    - `TEMPLATE` = `<BASE_ROOT>\templates\AGENTS.template.md`.
    Confirm all nine source skill directories exist; stop if any are
-   missing. `dev-setup` itself is **never** copied into the target.
+   missing. A missing `AGENTS_SOURCE` is **not** fatal — the skills fall
+   back to built-in agents without it — so report it and continue.
+   `dev-setup` itself is **never** copied into the target.
 
 ## Git Mode
 
@@ -150,10 +154,23 @@ ever hides what this skill installed:
 /.github/skills/dev-pr-open/
 /.github/skills/dev-complete/
 
+# Personal dev-* Copilot agents (local only; not for the shared repo)
+/.github/agents/dev-approach-author.md
+/.github/agents/dev-approach-judge.md
+/.github/agents/dev-eng-reviewer.md
+/.github/agents/dev-qa-reviewer.md
+/.github/agents/dev-stage-runner.md
+
 # Local scratch workspace for dev-* skills (local only)
 /scratch/
 # <<< dev-* skills (managed by dev-setup) <<<
 ```
+
+The agents are named **file by file**, for the same reason the skills are
+named directory by directory: `/.github/agents/` would hide a repo's own
+agents, and `dev-*` would swallow any it adds later with that prefix. List
+exactly what you installed, and list only the definitions that
+`AGENTS_SOURCE` actually contained.
 
 Add `/AGENTS.md` to that block **only** if the answer to the AGENTS.md
 question below is "keep it local", and put it under its own comment line.
@@ -169,7 +186,8 @@ the file if absent:
 ```
 
 The skills themselves are deliberately **not** listed: in `include` mode
-they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
+they are meant to be tracked, and so are the agent definitions.
+`AGENTS.md` is never ignored in this mode.
 
 ## Workflow
 
@@ -178,8 +196,10 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    git repo, or if it is the canonical source repo.
 
 2. **Resolve the canonical source.** Compute `SKILLS_SOURCE`, `BASE_ROOT`,
-   and `TEMPLATE` as described under Inputs. Confirm the nine skill
-   directories exist.
+   `AGENTS_SOURCE`, and `TEMPLATE` as described under Inputs. Confirm the
+   nine skill directories exist. Note whether `AGENTS_SOURCE` exists —
+   step 4.2 branches on it, and an unresolved variable there would skip
+   the agent copy while still reporting a clean install.
 
 3. **Settle the git mode.** Use `git_mode` if given; otherwise ask. Detect a
    prior installation first (an existing sentinel block in either file, or
@@ -205,6 +225,36 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      skip that detection entirely rather than resolving values nobody asked
      for.
 
+3.6. **Settle the subagent model policy.** Ask this in **both** git modes,
+   and **default to `tiered`**:
+
+   > *"When a `dev-*` skill fans out, should every sub-agent run your
+   > model, or should mechanical roles — locating files, running the
+   > documented build and test commands, collecting output — run a cheaper
+   > one? (default: tiered)"*
+
+   - The loop is sub-agent-heavy by construction: one `dev-complete` run
+     dispatches a sub-agent per stage *on top of* each stage's own fan-out.
+     `uniform` puts every one of those on the session's model. Say so when
+     you ask — the cost of the default is the reason the question exists.
+   - On **`tiered`**, propose a mechanical-tier model and **confirm it
+     before recording it**. Propose the cheapest model in the same family
+     as the session's own, so the answer still reads sensibly if the user
+     switches families later, and name what you are proposing and why.
+     Record the user's answer, never your proposal. Read the session's
+     actual model list rather than trusting a hardcoded name; at the time
+     of writing `claude-haiku-4.5`, `gpt-5-mini`, and `gemini-3.5-flash`
+     are the cheap tiers of their families, and that line will age.
+   - On **`uniform`**, record `Policy: uniform` and
+     `Mechanical-tier model: n/a`. That is the pre-policy behavior, and it
+     is always a safe answer.
+   - Record the answer in step 8. The table is written **either way**, so a
+     user who takes the default today can find the rows and flip them later
+     without re-running this skill.
+   - This is orthogonal to `git_mode` and to the GitHub integration.
+     Never infer it from either, and never skip it because one of them was
+     declined.
+
 4. **Copy the nine skills into the target (overwrite).** Copy each of the
    nine `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
    replacing any existing copy. Do **not** copy `dev-setup`.
@@ -224,6 +274,36 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    canonical source does not have (a local customization), do **not** delete
    them silently: list them in your report and ask whether to keep or remove
    them.
+
+4.2. **Copy the shared agent definitions into the target (overwrite).**
+   These are the named roles the skills prefer over a general-purpose
+   sub-agent: each carries its own role brief and its own `tools:`
+   restriction, so a reviewer that must not write **cannot**, rather than
+   merely being told not to.
+
+   ```powershell
+   $agentsDir = Join-Path $TARGET '.github\agents'
+   if (Test-Path $AGENTS_SOURCE) {
+     New-Item -ItemType Directory -Force -Path $agentsDir | Out-Null
+     Get-ChildItem $AGENTS_SOURCE -Filter 'dev-*.md' -File |
+       Copy-Item -Destination $agentsDir -Force
+   }
+   ```
+
+   - **Copy only `dev-*.md`.** A target's own agents live in the same
+     directory and are none of this skill's business.
+   - **A missing `AGENTS_SOURCE` is not an error.** Every skill names a
+     built-in fallback for each role it dispatches, so a target without
+     these definitions still works — it just spends more and enforces the
+     read-only roles by prose. Say so in your report rather than stopping.
+   - **Never pin a `model:` into a copied definition.** All five roles are
+     reasoning roles and inherit the session's model by omitting the
+     property. The mechanical tier is served by the built-in `explore` and
+     `task` agents, which already run lightweight models — which is why
+     step 3.6's recorded model is a *fallback* for roles the built-ins do
+     not cover, not something to stamp into these files.
+   - Record which definitions you copied; step 5 names them file by file in
+     `exclude` mode, and it must name exactly these.
 
 4.5. **Check every copied description against the 1024-character limit.** A
    skill whose front-matter `description` exceeds **1024 characters** is
@@ -348,9 +428,10 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
    - Copy `TEMPLATE` to `<TARGET>\AGENTS.md` and fill every `{TBD: ...}`
      marker from step 7 — including every row inside the
      `## GitHub Integration` sentinel block, from step 3.5's answer and
-     step 7's GitHub detection. If `TEMPLATE` is missing, author the file
-     directly with the sections listed under "Required AGENTS.md sections"
-     below.
+     step 7's GitHub detection, and both rows of the
+     `### Subagent model policy` table, from step 3.6's answer. If
+     `TEMPLATE` is missing, author the file directly with the sections
+     listed under "Required AGENTS.md sections" below.
    - Leave a `{TBD: <what to find>}` marker only for something you genuinely
      could not determine, and list every remaining marker in your report. A
      marker is a visible request for input; a plausible-looking invented
@@ -374,6 +455,13 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      These are **not** the ignore-file sentinels above: different strings,
      a different comment syntax, and a different file. Never substitute one
      pair for the other.
+   - **If the `### Subagent model policy` table is absent** — which it is
+     in every `AGENTS.md` that predates this feature — offer to append it
+     under `## Agent guardrails`, filled from step 3.6, and to retire any
+     standing "subagents must use the same model configuration" bullet in
+     favor of a pointer to the table. Say plainly that declining leaves
+     the repo on `uniform`, because an absent table *is* `uniform`;
+     nothing breaks, and nothing gets cheaper.
    - **If the section exists and its `Repository` row disagrees with the
      target's own `origin` remote**, report it as a finding. A forked repo
      inherits the upstream's tracked `AGENTS.md`, so this is the expected
@@ -386,6 +474,11 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
 9. **Verify.** Confirm and report pass/fail for each:
    - All nine `SKILL.md` files are present under
      `<TARGET>\.github\skills\`.
+   - Every `dev-*.md` agent definition present in `AGENTS_SOURCE` is also
+     present under `<TARGET>\.github\agents\`, and each one still parses:
+     a `---` fenced YAML block carrying a `description`, and a `name` that
+     matches its filename. Report "no agent definitions in the canonical
+     source" as a pass with a note, not a failure.
    - Every copied skill's `description` is **≤ 1024 characters** (step 4.5).
      Report the measured length of each, not just a pass/fail — a skill
      sitting a few characters under the limit is one edit away from going
@@ -394,23 +487,35 @@ they are meant to be tracked. `AGENTS.md` is never ignored in this mode.
      and not in the other one.
    - `exclude` mode: the ignore block **names all nine** skill directories,
      and `git -C <TARGET> check-ignore -q .github/skills/dev-do` and
-     `... scratch` both exit 0.
+     `... scratch` both exit 0. When agent definitions were installed, the
+     block also names each of them, and
+     `git -C <TARGET> check-ignore -q .github/agents/dev-stage-runner.md`
+     exits 0.
    - `include` mode: `git -C <TARGET> check-ignore -q scratch` exits 0, and
      `... .github/skills/dev-do` exits non-zero (it must *not* be ignored).
+     `... .github/agents/dev-stage-runner.md` must also exit non-zero.
    - `git -C <TARGET> status --porcelain` matches the mode: in `exclude`
-     mode nothing new appears under `.github/skills/dev-*/` or `scratch/`;
-     in `include` mode the nine skill directories appear as untracked and
+     mode nothing new appears under `.github/skills/dev-*/`,
+     `.github/agents/dev-*.md`, or `scratch/`; in `include` mode the nine
+     skill directories and the agent definitions appear as untracked and
      ready to stage.
    - The `## GitHub Integration` sentinel block appears **exactly once** in
      `<TARGET>\AGENTS.md`, with an `Enabled` row matching step 3.5's answer.
+   - The `### Subagent model policy` table appears **exactly once**, with a
+     `Policy` row matching step 3.6's answer and a `Mechanical-tier model`
+     row that is a real model id under `tiered` and `n/a` under `uniform`.
+     A `tiered` policy whose model row still reads `{TBD` is worse than
+     `uniform`: it is a policy no skill can resolve.
    - `git -C <TARGET> diff --cached --quiet` exits 0 — you staged nothing.
    - `<TARGET>\AGENTS.md` exists, and its remaining `{TBD` markers are
      listed.
 
 10. **Report back.** State: the resolved `TARGET`; the git mode and which
     file received the rules (plus any mode migration); the nine skills
-    copied; the GitHub integration answer and every value recorded for it;
-    the `AGENTS.md` outcome (created / audited) with every
+    copied; the agent definitions copied, or that the canonical source had
+    none; the GitHub integration answer and every value recorded for it;
+    the subagent model policy and, under `tiered`, the mechanical-tier
+    model recorded; the `AGENTS.md` outcome (created / audited) with every
     outstanding `{TBD}`; a compact summary of the detected stack; and the
     **next step** — *start a fresh Copilot CLI session in the target repo*
     so `.github/skills/` is auto-discovered and the skills load. Confirm
@@ -437,7 +542,7 @@ list both to fill the template and to audit an existing file.
 | Commit conventions | Types, subject style, and required trailers verbatim. |
 | Scratch / slot convention | The `scratch/<MMDD>-<##>/` layout and that it is ignored. |
 | GitHub Integration *(conditional)* | Whether the integration is on; and when on, the target repository, the resolved label mapping, the changelog location and format, and whether PRs open as drafts. |
-| Agent guardrails | "Never invent a command", plus repo-specific rules. |
+| Agent guardrails | "Never invent a command", the **subagent model policy** table, plus repo-specific rules. |
 
 Two rules for the content itself:
 
@@ -466,12 +571,20 @@ when `Enabled` is `no` there is no such row to disagree.
 - **`include` mode never touches `.git/info/exclude`,** except to remove a
   stale sentinel block left by a previous `exclude`-mode run.
 - **Name the skills explicitly in exclude rules.** No `dev-*` wildcard — it
-  would hide skills this installer never created.
+  would hide skills this installer never created. The same goes for agent
+  definitions: name each `dev-*.md` file, never the `.github/agents/`
+  directory, which the target may already be using for its own agents.
+- **Never pin a `model:` into an agent definition you copy.** All five
+  shipped roles are reasoning roles and inherit the session's model by
+  leaving the property unset. The cheap tier comes from routing mechanical
+  work to the built-in `explore` and `task` agents, not from cheapening a
+  role that exists to exercise judgment.
 - **Idempotent.** Re-running must not duplicate rules and must cleanly
   refresh the copied skills. The sentinel block is what makes that possible;
   always write it.
 - **Never copy `dev-setup` into the target.** Only the nine worker skills
-  are installed. `dev-setup` lives solely in the canonical source.
+  and the `.github/agents/dev-*.md` definitions are installed.
+  `dev-setup` lives solely in the canonical source.
 - **A description over 1024 characters makes a skill invisible.** The skill
   is dropped silently at session start — no error, no entry in the agent's
   skill list, and an install that looks clean. Measure every copied

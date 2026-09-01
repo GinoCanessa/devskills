@@ -37,7 +37,7 @@ is optional when you drive the loop by hand, and mandatory inside a run.
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
 | `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
 | `dev-complete` | Orchestrator | a slot + a kind + content | *nothing of its own; drives the skills that write* |
-| `dev-setup` | Setup engineer | a target repo | installed skills + `AGENTS.md` |
+| `dev-setup` | Setup engineer | a target repo | installed skills + agents + `AGENTS.md` |
 
 Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
 `dev-do` commits locally and **never pushes or opens a PR** — `dev-pr-open`
@@ -84,13 +84,17 @@ dev-setup C:\ai\git\some-repo
    (default: no), and — when it is — resolve the target repository, the
    label mapping, the changelog location and format, and whether PRs open
    as drafts.
-3. Copy the nine worker skills into `<target>/.github/skills/`.
-4. Write ignore rules into a sentinel block — `.git/info/exclude` when
+3. Ask which **subagent model policy** to record (default: `tiered`) — see
+   below.
+4. Copy the nine worker skills into `<target>/.github/skills/`, and the
+   shared agent definitions into `<target>/.github/agents/`.
+5. Write ignore rules into a sentinel block — `.git/info/exclude` when
    excluded, `.gitignore` when included.
-5. Create `<target>/scratch/`.
-6. Detect the target's stack and scaffold `<target>/AGENTS.md` from
+6. Create `<target>/scratch/`.
+7. Detect the target's stack and scaffold `<target>/AGENTS.md` from
    `templates/AGENTS.template.md`, or audit an existing one — including its
-   `## GitHub Integration` section, which is written either way.
+   `## GitHub Integration` section and its `### Subagent model policy`
+   table, both of which are written either way.
 
 It is idempotent, and it **never stages, commits, or pushes**.
 
@@ -102,6 +106,7 @@ Re-run it any time to pull skill updates from this repo into a target.
 |-|-|-|
 | Ignore rules go in | `.git/info/exclude` | `.gitignore` |
 | Skills are | untracked and ignored | tracked, ready to commit |
+| Agent definitions are | untracked and ignored | tracked, ready to commit |
 | `scratch/` is | ignored | ignored |
 | `AGENTS.md` is | tracked, or local — it asks | tracked |
 | Shared `.gitignore` | untouched | gets a `/scratch/` rule |
@@ -118,6 +123,7 @@ accident.
 | Path | Contents |
 |-|-|
 | `.github/skills/dev-*/` | The canonical skills. Editing these is how you change every repo. |
+| `.github/agents/dev-*.md` | Shared named sub-agent roles, installed alongside the skills. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target. |
 | `AGENTS.md` | Conventions for agents working on *this* repo. |
 | `scratch/` | Local inner-loop slots (ignored). |
@@ -164,6 +170,53 @@ issues as the branch accumulated, and closing all of them on merge.
 
 `dev-issue` and `dev-pr-open` do nothing unless the GitHub integration is
 enabled — see below.
+
+## Sub-agent roles and cost
+
+The loop delegates, and delegation is what it spends. A single
+`dev-complete` run dispatches one sub-agent per stage *on top of* each
+stage's own fan-out, so the difference between a thoughtful default and a
+careless one is large.
+
+Three mechanisms keep it in check.
+
+**Named agents.** `.github/agents/` holds five role definitions that
+`dev-setup` installs alongside the skills:
+
+| Agent | Used by | Notable |
+|-|-|-|
+| `dev-approach-author` | `dev-approach` | Writes one approach, in isolation from its siblings |
+| `dev-approach-judge` | `dev-approach` | **No edit tool** — it returns a verdict and cannot write one |
+| `dev-eng-reviewer` | `dev-review` | Engineering pass; no edit tool |
+| `dev-qa-reviewer` | `dev-review` | QA pass; no edit tool |
+| `dev-stage-runner` | `dev-complete` | Runs one stage; full toolset |
+
+Each carries its own role brief, so dispatching it is shorter than
+prompting a general-purpose agent into the same shape — and each is
+`user-invocable: false`, so they stay out of your `/agent` picker. The
+read-only ones enforce that through `tools:` rather than by being asked
+nicely. A repo without these definitions still works: every skill names a
+built-in fallback.
+
+**Built-ins for mechanical work.** `explore` (finding code) and `task`
+(running documented build and test commands) already run lightweight
+models, so the skills route discovery and verification to them rather
+than to a general-purpose agent. `task` also returns a summary on success
+and full output only on failure, which keeps green build logs out of the
+context entirely.
+
+**A recorded policy.** `AGENTS.md` carries a `### Subagent model policy`
+table with two values — `uniform` or `tiered`, and the model the
+mechanical tier resolves to. Each skill classifies **its own** roles under
+a `## Sub-Agent Model Tier` section; the repo decides what those tiers
+cost. Reviewing, judging, and designing are always reasoning roles and
+are never cheapened — a critique that misses a Blocker costs more than it
+saved. An absent table means `uniform`, so repos predating this behave
+exactly as they did.
+
+Two related knobs: `max_subagents` (default 3) caps *concurrency*, and
+`dev-review` measures the scope first — below 5 changed files and 200
+changed lines it runs both passes in-process and spawns nothing at all.
 
 ## GitHub integration (opt-in)
 

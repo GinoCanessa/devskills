@@ -184,6 +184,13 @@ because a fresh sub-agent re-reads the `SKILL.md` from disk — a
 re-dispatch *is* the instruction reload that `dev-do`'s
 self-modification yield asks for.
 
+Use the **`dev-stage-runner`** agent, which carries the read-the-skill
+-file-first contract and the full toolset a stage may need. Fall back to
+`general-purpose` where it is not loaded. Naming the role also makes a
+run's cost legible per stage rather than collapsing every stage into one
+anonymous bucket, which matters here more than anywhere else in the loop:
+this skill is the single largest source of sub-agents in it.
+
 Hand each stage sub-agent exactly five things:
 
 1. **The absolute skill file path**, with an instruction to read it and
@@ -219,17 +226,32 @@ Hand each stage sub-agent exactly five things:
    fixes. The execution stage in particular runs with **no
    checkpointing**, because this run never pauses between phases.
 
-A stage sub-agent runs with the **same model configuration as you**, per
-`AGENTS.md` § *Agent guardrails*.
+A stage sub-agent runs at the **reasoning** tier — see
+§ *Sub-Agent Model Tier*. A stage is the whole skill it names, judgment
+included, and is never cheapened.
 
-**Record a baseline immediately before every dispatch.** Read the
-artifact that dispatch operates on and record its **content hash** — or
-record that the artifact is **absent**. On return, re-read it and
-compare. Without a baseline the byte-identical branch below is
-unimplementable: a dispatch hands over a path and regains control on
-return, and never reads the file in between. **Absent both before and
-after counts as unchanged**, which is what covers an authoring stage
-that never created its file at all.
+**Record a baseline immediately before every dispatch.** Hash the
+artifact that dispatch operates on — or record that the artifact is
+**absent**. On return, hash it again and compare. Without a baseline the
+byte-identical branch below is unimplementable: a dispatch hands over a
+path and regains control on return, and never reads the file in between.
+**Absent both before and after counts as unchanged**, which is what
+covers an authoring stage that never created its file at all.
+
+**Hash the file; do not read it into context to compare.**
+
+```powershell
+(Get-FileHash <artifact> -Algorithm SHA256).Hash
+```
+
+A 64-character digest settles the comparison exactly. Reading the
+artifact instead costs its full length twice per dispatch, against a
+`plan.md` that grows with every phase and a run that dispatches at least
+seven times — which is how an orchestrator whose whole design is to keep
+its own context small ends up carrying every artifact in it anyway. Read
+an artifact when you need its **content** — the `Status` row, the
+`- HANDBACK |` line, the ledger — and hash it when you only need to know
+whether it moved.
 
 **Classify every stage's outcome from the artifact on disk, never from
 the sub-agent's narrative.** A sub-agent that simply stopped is
@@ -273,6 +295,28 @@ absence never proves success. Branch 2 is what catches them.
 
 Never edit an artifact to fix a stage's work. Re-dispatch the stage.
 
+## Sub-Agent Model Tier
+
+Resolve each role against the **subagent model policy** in the
+repository's `AGENTS.md` (`## Agent guardrails`). An absent or
+unreadable policy means `uniform`, and every role below runs the
+spawning agent's model.
+
+| Role | Tier | Agent |
+|-|-|-|
+| Running a stage | reasoning | `dev-stage-runner` |
+| Reading an artifact's status or ledger on resume | mechanical | do it yourself |
+
+**A stage is never cheapened.** It is an entire skill — authoring,
+planning, executing, or reviewing — and the run's whole output is what
+those stages produce. The saving this policy is after happens *inside*
+each stage, where `max_subagents` and that skill's own tier table apply;
+you pass the cap through and let the stage spend it.
+
+**You fan out nowhere else.** Resume reads, ledger rebuilds, and baseline
+hashes are small and sequential; delegating them would cost a sub-agent's
+startup to save a file read. Do them in-process.
+
 ## The Standing Directive
 
 This is the autonomy contract you hand to **every** stage sub-agent,
@@ -295,10 +339,13 @@ artifact as settled content. It does not ask. This covers:
 - **`dev-plan`'s open decisions** — the ones its workflow would
   otherwise put to the user because the choice materially changes the
   work.
-- **`dev-approach`'s triviality proposal.** Default: **decline** it and
-  run all three authors. A triviality call made before any design work
-  is itself a claim about the solution's shape, and nobody is gating
-  this run.
+- **`dev-approach`'s triviality decision.** Default: **fan out** and run
+  all three authors, whatever the skill's own default would have been. A
+  triviality call made before any design work is itself a claim about the
+  solution's shape, and nobody is gating this run to catch a wrong one.
+  This is the one place the loop deliberately overrides that skill's
+  collapse default: an unattended run cannot be redirected, so it takes
+  the branch whose failure is merely expensive rather than wrong.
 - **`dev-approach` § *Re-Invocation Modes*,** which stops and asks
   whenever the slot already holds any `approach*.md`. That fires on
   **every resume into a partly-finished approach stage**, so it must be

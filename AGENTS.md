@@ -47,11 +47,21 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-issue/` | GitHub issue writer — sole writer of issues and of the `Issue` binding row; owns the Resolve-and-Record Protocol. |
 | `.github/skills/dev-pr-open/` | Push + PR — the only skill permitted to do either. |
 | `.github/skills/dev-complete/` | Orchestrator role — drives the whole chain in one invocation; owns no artifact. |
+| `.github/agents/` | Shared named sub-agent roles (`dev-approach-author`, `dev-approach-judge`, `dev-eng-reviewer`, `dev-qa-reviewer`, `dev-stage-runner`). Copied into targets alongside the skills. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target repo. |
 | `scratch/` | Local feature requests / plans / analyses (**ignored**). |
 
 The skills live under `.github/skills/` so a session opened in this repo
-auto-discovers them and can run `dev-setup` directly.
+auto-discovers them and can run `dev-setup` directly. The agent
+definitions live under `.github/agents/` for the same reason.
+
+**Agent definitions are repo-agnostic too.** They ship to every target
+alongside the skills, so the same prohibition applies: no project name, no
+language, no framework, and — because which model a role runs is a
+repo-specific choice — **no `model:` property**. What they legitimately
+carry is a role brief and a `tools:` restriction, neither of which varies
+between repositories. Every one of them sets `user-invocable: false`:
+they are dispatched by skills, not chosen from a picker.
 
 ---
 
@@ -88,15 +98,25 @@ change to a skill done:
    }
    ```
 
-2. **No repo-specific leakage** in the worker skills. The glob form covers
-   skills added later automatically; `dev-setup` is excluded because this
-   file exempts the installer. This must return nothing:
+2. **No repo-specific leakage** in the **portable** files — the worker
+   skills *and* the agent definitions, both of which ship to every target.
+   The glob form covers skills and agents added later automatically;
+   `dev-setup` is excluded because this file exempts the installer. This
+   must return nothing:
 
    ```powershell
-   Get-ChildItem .github\skills -Directory -Exclude dev-setup |
-     Get-ChildItem -Recurse -File |
-     Select-String -Pattern 'FhirTx|MeetingAssistant|dotnet-fhir-tx|meeting-assistant'
+   $portable = @(Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+                 Get-ChildItem -Recurse -File) +
+               @(Get-ChildItem .github\agents -File -Filter 'dev-*.md')
+   $portable | Select-String -Pattern 'FhirTx|MeetingAssistant|dotnet-fhir-tx|meeting-assistant'
    ```
+
+   **`$portable` is the unit these prohibitions apply to**, not
+   `.github\skills`. Checks 5, 6, and 9 reuse it verbatim for the same
+   reason: an agent definition is copied into a target byte-for-byte, so
+   a project name baked into one leaks exactly as far as a project name
+   baked into a skill. Keeping the four checks on one definition means a
+   later artifact class is covered by editing it in one place.
 
 3. **Cross-skill references resolve.** Skill names cited in one skill exist
    as directories; file names cited (`featurerequest.md`, `bugreport.md`,
@@ -113,9 +133,10 @@ change to a skill done:
    This must return nothing:
 
    ```powershell
-   Get-ChildItem .github\skills -Directory -Exclude dev-setup |
-     Get-ChildItem -Recurse -File |
-     Select-String -Pattern '--repo\s+(?!<)'
+   $portable = @(Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+                 Get-ChildItem -Recurse -File) +
+               @(Get-ChildItem .github\agents -File -Filter 'dev-*.md')
+   $portable | Select-String -Pattern '--repo\s+(?!<)'
    ```
 
    Paired **inspection**, deliberately not a command: every `gh` invocation
@@ -131,9 +152,10 @@ change to a skill done:
    in `dev-setup`. This must return nothing:
 
    ```powershell
-   Get-ChildItem .github\skills -Directory -Exclude dev-setup |
-     Get-ChildItem -Recurse -File |
-     Select-String -Pattern '`(enhancement|bug|documentation)`'
+   $portable = @(Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+                 Get-ChildItem -Recurse -File) +
+               @(Get-ChildItem .github\agents -File -Filter 'dev-*.md')
+   $portable | Select-String -Pattern '`(enhancement|bug|documentation)`'
    ```
 
    Two design points a reader will otherwise undo. The **backtick
@@ -252,6 +274,106 @@ change to a skill done:
    never installed. Preserving that property is why `dev-complete`'s one
    `dev-setup` citation was dropped rather than left as provenance.
 
+9. **No model id in a worker skill.** Which model a tier resolves to is
+   repo-specific and belongs in the target's `AGENTS.md`; a worker skill
+   names only the *tier*. The pattern matches the vendor-prefixed id
+   forms the Copilot CLI accepts. This must return nothing:
+
+   ```powershell
+   $portable = @(Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+                 Get-ChildItem -Recurse -File) +
+               @(Get-ChildItem .github\agents -File -Filter 'dev-*.md')
+   $portable | Select-String -Pattern '(claude|gpt|gemini|grok|mai)-[0-9]'
+   ```
+
+   `dev-setup` is excluded on the usual grounds, and it is the one skill
+   that legitimately *proposes* a mechanical-tier model — it has to, since
+   it is what fills the row in. The proposal is reconciled with the user
+   before it is recorded, exactly as the stock-label proposal in check 6
+   is reconciled against `gh label list`.
+
+   Paired **inspection**, deliberately not a command: a fanning-out worker
+   skill carries a `## Sub-Agent Model Tier` section that classifies
+   **its own** roles, and every sub-agent that skill names elsewhere
+   appears in that classification. A role named in the workflow but
+   missing from the table resolves to no tier at all, and the "when in
+   doubt, reasoning" fallback then silently makes the policy a no-op for
+   it. No regex catches an *omission*.
+
+10. **Agent definitions parse, and carry no model pin.** Every file in
+    `.github/agents/` starts with a `---` fenced YAML block whose `name`
+    matches the filename, carries the required `description`, and sets
+    `user-invocable: false`. None sets `model:`, for check 9's reason —
+    they ship to every target, so a pin here is a repo-specific value
+    baked into a portable file. This must report `ok` on every row and
+    print no `MODEL PINNED` line:
+
+    ```powershell
+    Get-ChildItem .github\agents -Filter '*.md' -File | ForEach-Object {
+      $raw = Get-Content $_.FullName -Raw -Encoding utf8
+      $fm  = [regex]::Match($raw, '(?s)\A---\r?\n(.*?)\r?\n---').Groups[1].Value
+      $nm  = [regex]::Match($fm, '(?m)^name:\s*(\S+)').Groups[1].Value
+      $ok  = ($nm -eq $_.BaseName) -and
+             ($fm -match '(?m)^description:\s*\S') -and
+             ($fm -match '(?m)^user-invocable:\s*false')
+      '{0,-22} {1}' -f $_.BaseName,
+        $(if ($ok) { 'ok' } else { 'BAD FRONT MATTER' })
+      if ($fm -match '(?m)^model:') { "  $($_.BaseName): MODEL PINNED" }
+    }
+    ```
+
+    All three properties fail **silently**, which is why they are checked
+    mechanically: a missing `description` is what the harness rejects, a
+    `name` that does not match the filename is what makes a skill's
+    `dev-eng-reviewer` reference resolve to nothing, and a missing
+    `user-invocable: false` is what puts five internal roles in the user's
+    `/agent` picker.
+
+11. **Every agent a skill names exists, and `dev-setup`'s copy of the list
+    is current.** Two arms, because the risk has two shapes: a skill that
+    dispatches an agent that never shipped falls through to its
+    general-purpose fallback — quietly, and at full price — and a
+    `dev-setup` whose hardcoded exclude-block list has drifted leaves a
+    newly added agent tracked in a repo that asked for `exclude`. This
+    must return nothing from both arms:
+
+    ```powershell
+    $have = (Get-ChildItem .github\agents -Filter 'dev-*.md' -File).BaseName
+    # arm 1 — agents cited in a worker skill
+    Get-ChildItem .github\skills -Directory -Exclude dev-setup |
+      Get-ChildItem -Recurse -File | ForEach-Object {
+        $f = $_
+        [regex]::Matches((Get-Content $f.FullName -Raw -Encoding utf8),
+                         '`(dev-[a-z-]*(?:author|judge|reviewer|runner))`') |
+          ForEach-Object {
+            $n = $_.Groups[1].Value
+            if ($have -notcontains $n) { "$($f.Directory.Name) -> $n : NO SUCH AGENT" }
+          }
+      }
+    # arm 2 — the filename list dev-setup writes into an exclude block
+    $setup = Get-Content .github\skills\dev-setup\SKILL.md -Raw -Encoding utf8
+    $listed = [regex]::Matches($setup, '/\.github/agents/(dev-[a-z-]+)\.md') |
+                ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+    Compare-Object ($have | Sort-Object) $listed |
+      ForEach-Object { "dev-setup exclude list: {0} {1}" -f $_.SideIndicator, $_.InputObject }
+    ```
+
+    **Arm 1 matches on role-name *shape*** — `*author`, `*judge`,
+    `*reviewer`, `*runner` — rather than on a fixed list, so a role
+    invented later is caught without anyone remembering to extend it. It
+    cannot collide with a skill name, since no skill ends in any of those,
+    and check 3 already covers skill references.
+
+    **Arm 1 deliberately excludes `dev-setup`, and arm 2 is why.** The
+    installer never *dispatches* an agent; it names them as bare paths
+    inside a fenced ignore block, a form arm 1's backtick anchor cannot
+    match and should not — an ignore rule is not a dispatch. Running arm 1
+    over `dev-setup` would therefore report nothing however stale that
+    list got, which is precisely the file where staleness costs something.
+    Arm 2 compares the list against the directory in both directions, so
+    it catches an agent added without an ignore rule *and* a rule left
+    behind after an agent was removed.
+
 ---
 
 ## Lint / format
@@ -350,10 +472,36 @@ These are decisions, not preferences. Violating one is a review Blocker.
   label" is a *recorded* label that no longer exists on the repository, so
   the name it offers to create comes from `AGENTS.md`, never from a skill.
   Guarded by § *Test* check 6.
+- **No worker skill names a model id.** Which model a sub-agent runs is
+  repo-specific, so it travels the `AGENTS.md` channel like every other
+  repo-specific value. A worker skill classifies **its own roles** as
+  reasoning or mechanical — that classification is a property of the loop
+  and is the same everywhere — and then defers to the recorded policy for
+  what each tier resolves to. An absent policy means `uniform`, which is
+  the behavior every repo had before the policy existed. Guarded by
+  § *Test* check 9.
+- **Delegation is justified, never reflexive.** A skill that fans out says
+  what makes the work worth a separate context — independence, isolation,
+  or size — and names a threshold below which it does the work in-process.
+  `max_subagents` is a *concurrency* ceiling and cannot bound total spend;
+  only a stated threshold can. A fan-out that re-reads the same small
+  input into three contexts costs more than the pass it replaced.
+- **Prefer a built-in agent to a general-purpose one.** `explore` and
+  `task` already run lightweight models, so routing discovery and
+  documented-command runs to them *is* the mechanical tier — no `model:`
+  needs passing to get it. A named `.github/agents/` role is for work no
+  built-in covers, and it earns its definition through a role brief and a
+  `tools:` restriction, not through a cheaper model.
+- **A read-only role is enforced by `tools:`, not by asking.**
+  `dev-approach-judge` carries no edit tool, and the two reviewer agents
+  carry none either. Never add one back to make a role "more useful" —
+  the denial is the guarantee. Their shell access cannot distinguish
+  `git diff` from a mutating command, so the read-only prose stays too.
 - **`dev-setup` never stages, commits, or pushes,** and never edits a shared
   `.gitignore` in `exclude` mode.
 - **`dev-setup` is never installed into a target repo.** Only the nine
-  worker skills are.
+  worker skills are, together with the `.github/agents/dev-*.md`
+  definitions they dispatch. The installer never ships itself.
 - **`dev-complete` owns no artifact.** It orchestrates; every slot file is
   still written by the skill that owns it, dispatched as a stage. It never
   edits an artifact to fix a stage's work.
@@ -419,7 +567,7 @@ scratch/<MMDD>-<##>/
 - Read this file before proposing any build, test, or lint command. **Never
   invent a command.** If something you need is not documented here, say so
   rather than guessing.
-- Subagents must use the same model configuration as the spawning agent.
+- Subagents follow the **subagent model policy** recorded below.
 - Do not add new linting, building, or testing tooling. This repository is
   markdown; it does not need a toolchain, and adding one is a scope
   violation.
@@ -431,3 +579,34 @@ scratch/<MMDD>-<##>/
   update them in the same change.
 - **Editing a skill does not affect the running session.** Say so when
   reporting a skill change, and tell the user to start a fresh session.
+
+### Subagent model policy
+
+Every `dev-*` skill that fans out reads this table before it spawns
+anything, and each skill classifies its own roles as **reasoning** or
+**mechanical**. **An absent or unreadable table means `uniform`** — the
+conservative default, and the behavior every repo had before this table
+existed.
+
+| Setting | Value |
+|-|-|
+| Policy | tiered |
+| Mechanical-tier model | `claude-haiku-4.5` |
+
+- **`uniform`** — every sub-agent runs the spawning agent's model
+  configuration, whatever its role.
+- **`tiered`** — a sub-agent in a **reasoning** role runs the spawning
+  agent's configuration; a sub-agent in a **mechanical** role runs the
+  recorded mechanical-tier model.
+
+The role classification lives in the skills, not here: it is a property
+of the loop and does not vary between repositories. Only the policy and
+the model id do, which is why they are the two rows recorded. Each
+fanning-out skill carries its own classification under a
+`## Sub-Agent Model Tier` section.
+
+This repository records `tiered` because its own worker skills fan out
+heavily — a single `dev-complete` run dispatches one sub-agent per stage
+on top of each stage's own fan-out — and because most of what those
+sub-agents do here is reading markdown and checking that a citation
+resolves, which is mechanical by any reading.

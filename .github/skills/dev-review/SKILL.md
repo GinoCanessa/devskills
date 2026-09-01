@@ -141,7 +141,9 @@ engineer writing the analysis the team will actually read. You:
    ceiling — you may launch more than `max_subagents` sub-agents over
    the life of the task (e.g., when partitioning a large `full` scope)
    as long as no more than `max_subagents` are running at the same
-   time.
+   time. The cap never decides **whether** to fan out at all — the
+   measured-scope threshold in the Workflow's step 4 does, and it applies
+   before the cap is consulted.
 
 ## Scope Resolution (when `Scope` is not supplied)
 
@@ -195,26 +197,68 @@ mis-scoping before any expensive work happens.
      must be real. Never invent one.
    - Identify the affected project(s) so the commands you cite are
      correctly scoped.
-4. **Run the two review passes.** Prefer running them in parallel as
-   sub-agents (one `general-purpose` or `code-review` agent per role)
-   so they can't anchor on each other. Each sub-agent:
-   - Receives the **same** resolved scope and focus text.
-   - Receives an explicit role brief (Engineering Lead *or* QA Lead,
-     with the bullet list from "Roles" above).
-   - Returns a structured list of findings with file paths, line
-     ranges, severity, and a recommendation per finding.
-   - Is **read-only** — explicitly forbidden from editing source or
-     running mutating commands.
+4. **Measure the scope, then decide whether to fan out.** Count the
+   changed files and changed lines **in the resolved scope**, using the
+   form that scope actually needs:
+   - `working-tree` → `git diff --stat HEAD` (bare `git diff --stat`
+     omits staged changes, and a fully-staged change would measure zero).
+   - A commit range, `last-commit`, or `since-push` → `git diff --stat`
+     against that range.
+   - `plan-slot` → `git show --stat` over **each** commit the slot
+     produced, unioning the file set. The Scope Resolution rules below
+     forbid collapsing that commit set into a range unless contiguity is
+     verified, so there is often no range to measure; a bare
+     `git diff --stat` here measures a working tree `dev-do` has just
+     left clean and returns zero.
+   - A file list → the list itself, with `git diff --stat HEAD` over
+     those paths.
+   - `full` → always above the threshold; do not measure.
+
+   Then:
+   - **Below the threshold — 5 changed files *and* 200 changed lines —
+     run both passes yourself, in-process, one after the other.** Put on
+     the Engineering hat, write the findings down, then put on the QA hat
+     and do it again without rereading your own findings. Two sub-agents
+     that each re-read a 60-line diff cost more than the pass they
+     replaced, and the isolation they buy is worth little when the whole
+     scope fits in one screen.
+   - **At or above the threshold, run the two passes in parallel
+     sub-agents** — the `dev-eng-reviewer` and `dev-qa-reviewer` agents,
+     one per role. Both are read-only by definition: they carry no edit
+     tool, so the read-only guarantee below is enforced by the harness
+     rather than by prose. Where they are not loaded, fall back to
+     `code-review` for the engineering pass and `general-purpose` for the
+     QA pass, and in that case state the role brief and the read-only
+     constraint explicitly in the prompt. They must not see each other's
+     findings until synthesis. Each sub-agent:
+     - Receives the **same** resolved scope and focus text.
+     - Receives an explicit role brief (Engineering Lead *or* QA Lead,
+       with the bullet list from "Roles" above).
+     - Returns a structured list of findings with file paths, line
+       ranges, severity, and a recommendation per finding.
+     - Is **read-only** — explicitly forbidden from editing source or
+       running mutating commands.
+
+   State which branch you took and the measured counts that decided it.
+   A `full` scope is always above the threshold. When the user supplies
+   a focus that narrows the scope to a handful of files, measure the
+   **narrowed** set — that is what will actually be read. **A measurement
+   of zero on a non-empty scope is a bug, not a small scope**: say so and
+   fan out rather than reporting a review of nothing.
 5. **Synthesize.** Put on the synthesizer hat. Merge duplicates,
    re-rank by severity, drop noise, write the final report using
    the format below.
 6. **Sanity-check** a report containing any Blocker, High, or
    architecture-level recommendation with a registered review
-   specialist when available. Otherwise use a fresh `general-purpose`
-   sub-agent explicitly prompted to act as an adversarial/rubber-duck
-   reviewer. Adopt critique findings that prevent miscommunication;
-   set aside findings that bloat the report. Briefly note in your reply
-   what (if anything) changed.
+   specialist when available. Otherwise use a `rubber-duck` agent, or a
+   fresh `general-purpose` sub-agent explicitly prompted to act as an
+   adversarial reviewer where `rubber-duck` is unavailable. A report with
+   **no Blocker, no High, and no architecture-level recommendation**
+   skips this step — there is no finding whose cost of being wrong
+   justifies the pass. An architecture-level recommendation triggers it
+   at any severity. Adopt critique findings that prevent
+   miscommunication; set aside findings that bloat the report. Briefly
+   note in your reply what (if anything) changed.
 7. **Write `analysis.md`.** Overwrite if present.
 8. **Report back** with: the resolved analysis path, the resolved
    scope, finding counts by severity, and the top 3 findings (one
@@ -333,15 +377,21 @@ How these findings re-enter the loop:
 
 ## Sub-Agent Use
 
-- The two role passes (Engineering Lead, QA Lead) **should** run in
-  parallel sub-agents. They must not see each other's findings until
-  the synthesizer step. This is the whole point of doing two passes —
-  if they collapse into one, you get one set of findings with the
-  illusion of two reviewers.
+- The two role passes (Engineering Lead, QA Lead) run in parallel
+  sub-agents **once the scope is at or above the threshold in step 4**,
+  and in-process below it. When they do run as sub-agents they must not
+  see each other's findings until the synthesizer step. This is the whole
+  point of doing two passes — if they collapse into one, you get one set
+  of findings with the illusion of two reviewers. The in-process branch
+  keeps that property by ordering, not isolation: complete the first
+  pass's findings before you start the second.
 - Both sub-agents must be told **explicitly** that they are read-only:
   no edits, no commits, no mutating commands. They may run `git diff`,
   `git log`, `git show`, `view`, `grep`, `glob`, `lsp`, and similar
-  read-only inspections.
+  read-only inspections. The `dev-eng-reviewer` and `dev-qa-reviewer`
+  agents already encode this and carry no edit tool, which closes the
+  file-writing path outright; say it anyway, because their shell access
+  cannot distinguish `git diff` from a mutating command.
 - The synthesizer step is **always** done in-process, not delegated.
   You own the final ranking and recommendations.
 - For very large scopes (`full` or a multi-hundred-file diff), you
@@ -353,6 +403,35 @@ How these findings re-enter the loop:
   Engineering and QA passes one after the other rather than in
   parallel; they must still be **independent** invocations that do
   not see each other's output until synthesis.
+
+## Sub-Agent Model Tier
+
+Resolve each role against the **subagent model policy** in the
+repository's `AGENTS.md` (`## Agent guardrails`). An absent or
+unreadable policy means `uniform`, and every role below runs the
+spawning agent's model.
+
+| Role | Tier | Agent |
+|-|-|-|
+| Engineering Lead pass | reasoning | `dev-eng-reviewer` |
+| QA Lead pass | reasoning | `dev-qa-reviewer` |
+| Adversarial sanity check | reasoning | `rubber-duck` |
+| Partition slice of a `full` scope | reasoning | `dev-eng-reviewer` / `dev-qa-reviewer` |
+| Locating the affected projects, or resolving a scope to a file list | mechanical | `explore` |
+
+**Prefer the named agent over a general-purpose one.** Each carries its
+own role brief and its own tool restrictions, so dispatching it is
+shorter *and* safer than prompting a general-purpose agent into the same
+shape. When one is not loaded, fall back as step 4 describes and supply
+the brief yourself.
+
+**Every reviewing role is reasoning, without exception.** A review is
+judgment end to end, and the cost of a missed Blocker is the whole cost
+this skill exists to avoid. The only mechanical work here is finding out
+*what* to review; deciding what is wrong with it never is. Do not
+reclassify a pass because the diff looks small — a small diff takes the
+in-process branch in step 4 and spawns nothing at all, which is the
+saving that scope buys.
 
 ## Iteration Mode
 
@@ -414,5 +493,9 @@ against a slot whose `analysis.md` already exists:
   findings list.
 - **Concurrency cap is a hard ceiling.** Do not spin up more than
   `max_subagents` sub-agents in parallel.
+- **Fan-out is earned by scope, not assumed.** Below the step-4
+  threshold, run both passes in-process and spawn nothing. Report the
+  measured counts either way, so the choice is auditable rather than a
+  mood.
 - **Do not commit.** Files under `scratch/` are gitignored on
   purpose.

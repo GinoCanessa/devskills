@@ -283,11 +283,53 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
   same time.
 - Use sub-agents for parallel exploration of unfamiliar areas,
   independent owned-file work, and fanning out tests across the
-  repository's projects. Use `code-review` for an existing diff. When an
-  adversarial critique is useful and no registered specialist exists,
-  use a `general-purpose` sub-agent explicitly prompted for that role.
+  repository's projects. Match the agent to the job rather than reaching
+  for `general-purpose`:
+  - **`task`** for running builds, tests, and lints. It returns a short
+    summary on success and the full output only on failure, which is
+    exactly the shape a verification step needs — and it keeps a green
+    thousand-line build log out of your context entirely.
+  - **`explore`** for locating files, symbols, and call sites in an
+    unfamiliar area.
+  - **`code-review`** for an existing diff, and **`rubber-duck`** when an
+    adversarial critique is useful.
+  - **`general-purpose`** only for work that needs the full toolset and
+    genuine judgment, and that none of the above covers.
+- **Delegating a single file edit costs more than doing it.** A sub-agent
+  pays for its own context before it writes a line. Delegate work that is
+  independent, parallel, or large enough to be worth a separate context —
+  not work that is merely separable.
 - Do **not** delegate the plan-status updates or the commits — you own
   those. Sub-agents return work; you integrate, verify, and commit.
+
+## Sub-Agent Model Tier
+
+Resolve each role against the **subagent model policy** in the
+repository's `AGENTS.md` (`## Agent guardrails`). An absent or
+unreadable policy means `uniform`, and every role below runs the
+spawning agent's model.
+
+| Role | Tier | Agent |
+|-|-|-|
+| Implementing an owned-file slice of a phase | reasoning | `general-purpose` |
+| Adversarial critique of an approach mid-phase | reasoning | `rubber-duck` |
+| Diagnosing a failed verification command | reasoning | `general-purpose` |
+| Reviewing a diff you just produced | reasoning | `code-review` |
+| Running a documented build, test, or lint command and reporting the result | mechanical | `task` |
+| Locating files, symbols, or call sites | mechanical | `explore` |
+| Checking a specific claim against a specific file | mechanical | `explore` |
+
+**The built-in agents already run lightweight models.** `explore` and
+`task` are the mechanical tier for most repositories — reaching for them
+is what makes the policy real, and no `model:` needs to be passed to get
+it. Only a mechanical role that none of the built-ins covers needs the
+recorded mechanical-tier model.
+
+The line is whether the caller can **verify the output cheaply**. A test
+run either passes or it does not, and you read the result yourself, so a
+cheap model running it costs nothing when it is wrong. A diagnosis of
+*why* it failed is a judgment you would have to redo, so it is not
+mechanical however much it looks like one.
 
 ## Commit Hygiene
 
