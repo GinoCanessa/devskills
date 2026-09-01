@@ -214,14 +214,23 @@ mis-scoping before any expensive work happens.
      those paths.
    - `full` → always above the threshold; do not measure.
 
-   Then:
-   - **Below the threshold — 5 changed files *and* 200 changed lines —
-     run both passes yourself, in-process, one after the other.** Put on
-     the Engineering hat, write the findings down, then put on the QA hat
-     and do it again without rereading your own findings. Two sub-agents
-     that each re-read a 60-line diff cost more than the pass they
-     replaced, and the isolation they buy is worth little when the whole
-     scope fits in one screen.
+   Then take one of two branches. **Both dispatch a sub-agent; neither
+   reviews in-process.** What the threshold buys is one review context
+   instead of two, never a review done by whoever is holding the skill:
+   you may be running on a model chosen for orchestration, you carry an
+   edit tool the reviewer roles deliberately lack, and — on the
+   `plan-slot` scope — you may be the same context that just wrote the
+   code, which is the one reader whose independence cannot be recovered.
+
+   - **Below the threshold — fewer than 5 changed files *and* fewer than
+     200 changed lines — dispatch a single `dev-change-reviewer`**, which
+     carries both role briefs and runs the engineering pass then the QA
+     pass in one context. Two sub-agents that each re-read a 60-line diff
+     cost more than the findings the split buys, and the isolation is
+     worth little when the whole scope fits on one screen. A scope that
+     is small by files but large by lines — three files, nine hundred
+     lines — is **above** the threshold, not below it: the conjunction is
+     on the low side, and either count alone is enough to fan out.
    - **At or above the threshold, run the two passes in parallel
      sub-agents** — the `dev-eng-reviewer` and `dev-qa-reviewer` agents,
      one per role. Both are read-only by definition: they carry no edit
@@ -238,6 +247,10 @@ mis-scoping before any expensive work happens.
        ranges, severity, and a recommendation per finding.
      - Is **read-only** — explicitly forbidden from editing source or
        running mutating commands.
+
+   Where `dev-change-reviewer` is not loaded, take the fan-out branch
+   rather than reviewing in-process: two agents cost more than one, and
+   nothing costs more than a review written by the context under review.
 
    State which branch you took and the measured counts that decided it.
    A `full` scope is always above the threshold. When the user supplies
@@ -379,12 +392,20 @@ How these findings re-enter the loop:
 
 - The two role passes (Engineering Lead, QA Lead) run in parallel
   sub-agents **once the scope is at or above the threshold in step 4**,
-  and in-process below it. When they do run as sub-agents they must not
+  and in a single `dev-change-reviewer` sub-agent below it. They must not
   see each other's findings until the synthesizer step. This is the whole
   point of doing two passes — if they collapse into one, you get one set
-  of findings with the illusion of two reviewers. The in-process branch
-  keeps that property by ordering, not isolation: complete the first
-  pass's findings before you start the second.
+  of findings with the illusion of two reviewers. The single-agent branch
+  keeps that property by ordering rather than isolation: it completes the
+  engineering findings before it starts the QA pass, and does not revise
+  the first list once the second is underway.
+- **You never review in-process, on either branch.** The passes belong in
+  a reviewer role or nowhere. Three things are lost when the skill's own
+  context does the reading: the role brief that makes the pass a pass,
+  the missing edit tool that makes read-only a guarantee rather than a
+  promise, and — on a `plan-slot` scope reached through `dev-complete` —
+  independence from the context that wrote the code. The first two you
+  could restate in prose; the third you cannot recover at all.
 - Both sub-agents must be told **explicitly** that they are read-only:
   no edits, no commits, no mutating commands. They may run `git diff`,
   `git log`, `git show`, `view`, `grep`, `glob`, `lsp`, and similar
@@ -415,6 +436,7 @@ spawning agent's model.
 |-|-|-|
 | Engineering Lead pass | reasoning | `dev-eng-reviewer` |
 | QA Lead pass | reasoning | `dev-qa-reviewer` |
+| Both passes over a below-threshold scope | reasoning | `dev-change-reviewer` |
 | Adversarial sanity check | reasoning | `rubber-duck` |
 | Partition slice of a `full` scope | reasoning | `dev-eng-reviewer` / `dev-qa-reviewer` |
 | Locating the affected projects, or resolving a scope to a file list | mechanical | `explore` |
@@ -430,8 +452,10 @@ judgment end to end, and the cost of a missed Blocker is the whole cost
 this skill exists to avoid. The only mechanical work here is finding out
 *what* to review; deciding what is wrong with it never is. Do not
 reclassify a pass because the diff looks small — a small diff takes the
-in-process branch in step 4 and spawns nothing at all, which is the
-saving that scope buys.
+single-agent branch in step 4 and spawns one reviewer instead of two,
+which is the saving that scope buys. Scope decides **how many** reviewers
+run, never **which model** reviews and never **whether** a reviewer runs
+at all.
 
 ## Iteration Mode
 
@@ -494,8 +518,12 @@ against a slot whose `analysis.md` already exists:
 - **Concurrency cap is a hard ceiling.** Do not spin up more than
   `max_subagents` sub-agents in parallel.
 - **Fan-out is earned by scope, not assumed.** Below the step-4
-  threshold, run both passes in-process and spawn nothing. Report the
-  measured counts either way, so the choice is auditable rather than a
-  mood.
+  threshold, one reviewer runs both passes instead of two running one
+  each. Report the measured counts either way, so the choice is auditable
+  rather than a mood.
+- **Never review in-process.** The threshold changes the number of
+  reviewers, never whether a reviewer is used. A pass done by the
+  skill's own context has no role brief, holds an edit tool, and may be
+  the context that wrote the code.
 - **Do not commit.** Files under `scratch/` are gitignored on
   purpose.

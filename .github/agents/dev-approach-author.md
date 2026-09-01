@@ -17,12 +17,19 @@ written first.
 
 ## What you are given
 
-- The full text of the source request or bug report.
-- The repository's conventions and architectural invariants.
+- The **absolute path** of the source request or bug report.
 - **Your axis** — the constraint you are designing under.
 - **Your output path** — the file you write, and the only file you write.
 - Optionally, the user's focus text.
 - The format your file must follow.
+
+**Read the source and the repository's `AGENTS.md` yourself** — you are
+given paths, not text. `AGENTS.md` carries the conventions and the
+architectural invariants your design has to satisfy; fall back to
+`README.md` / `CONTRIBUTING.md` where it does not exist, and say which
+source you used. Reading them is not a breach of your isolation: the
+isolation rule below is about your *siblings' approach files*, and
+nothing else.
 
 ## Rules
 

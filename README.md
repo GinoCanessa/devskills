@@ -180,7 +180,7 @@ careless one is large.
 
 Three mechanisms keep it in check.
 
-**Named agents.** `.github/agents/` holds five role definitions that
+**Named agents.** `.github/agents/` holds seven role definitions that
 `dev-setup` installs alongside the skills:
 
 | Agent | Used by | Notable |
@@ -189,6 +189,8 @@ Three mechanisms keep it in check.
 | `dev-approach-judge` | `dev-approach` | **No edit tool** — it returns a verdict and cannot write one |
 | `dev-eng-reviewer` | `dev-review` | Engineering pass; no edit tool |
 | `dev-qa-reviewer` | `dev-review` | QA pass; no edit tool |
+| `dev-change-reviewer` | `dev-review` | Both passes in one context, for a below-threshold scope; no edit tool |
+| `dev-implementer` | `dev-do` | Writes a phase's code; never commits, stages, or edits the plan |
 | `dev-stage-runner` | `dev-complete` | Runs one stage; full toolset |
 
 Each carries its own role brief, so dispatching it is shorter than

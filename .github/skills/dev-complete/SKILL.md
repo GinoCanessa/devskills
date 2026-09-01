@@ -339,13 +339,48 @@ artifact as settled content. It does not ask. This covers:
 - **`dev-plan`'s open decisions** — the ones its workflow would
   otherwise put to the user because the choice materially changes the
   work.
-- **`dev-approach`'s triviality decision.** Default: **fan out** and run
-  all three authors, whatever the skill's own default would have been. A
-  triviality call made before any design work is itself a claim about the
-  solution's shape, and nobody is gating this run to catch a wrong one.
-  This is the one place the loop deliberately overrides that skill's
-  collapse default: an unattended run cannot be redirected, so it takes
-  the branch whose failure is merely expensive rather than wrong.
+- **`dev-approach`'s triviality decision.** Apply that skill's own
+  four-part test, and **fan out on any doubt**. The source is trivial
+  only when **all four** hold: it is confined to a single file, it adds
+  no new component, it changes no public interface, and it implies no
+  choice a reasonable engineer would argue about. All four → collapse to
+  one approach. Any one of them false, or any one you cannot establish
+  from the source → run all three authors.
+
+  **The conjunction is the safety mechanism, and "cannot establish"
+  counts as false.** A source that does not say what it touches has not
+  passed the first clause; it has failed to answer it, and an unattended
+  run has nobody to ask. Treating silence as a pass is how this
+  degenerates into collapsing everything.
+
+  Do not read this as licence to reason your way to trivial. The four
+  clauses are facts about the source, not a judgment about the work's
+  size: a one-line change that alters a public interface is **not**
+  trivial, and neither is a small change that picks between two designs.
+  If you find yourself arguing for why a clause "basically" holds, it
+  does not, and that argument is itself the choice a reasonable engineer
+  would argue about.
+
+  **Record the decision and which clause decided it** as an assumption
+  like any other — the ledger line goes in `approach.md`'s `## Notes`,
+  in the form *The durable record* prescribes below, written by the
+  approach stage itself, and it is reported at the close per § *The
+  Assumption Ledger*. That record is what replaces the user's opt-out:
+  the skill's
+  attended form states the call and lets the user redirect, and an
+  unattended run cannot be redirected, so the call has to be auditable
+  after the fact instead.
+
+  This is deliberately narrower than the blanket fan-out this directive
+  used to require. That rule was written when the triviality call was a
+  held view, which nobody can audit after the fact; against a
+  conjunctive test over facts on the page, an unattended run evaluates
+  the clauses as reliably as an attended one, and the record makes a
+  wrong call visible in the slot. The asymmetry that motivated the old
+  rule still governs the tie-break — an unnecessary fan-out costs three
+  sub-agents, a wrongly collapsed one costs the decision the stage
+  exists to make — which is why doubt resolves to fanning out and never
+  to collapsing.
 - **`dev-approach` § *Re-Invocation Modes*,** which stops and asks
   whenever the slot already holds any `approach*.md`. That fires on
   **every resume into a partly-finished approach stage**, so it must be

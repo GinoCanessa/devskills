@@ -157,7 +157,9 @@ ever hides what this skill installed:
 # Personal dev-* Copilot agents (local only; not for the shared repo)
 /.github/agents/dev-approach-author.md
 /.github/agents/dev-approach-judge.md
+/.github/agents/dev-change-reviewer.md
 /.github/agents/dev-eng-reviewer.md
+/.github/agents/dev-implementer.md
 /.github/agents/dev-qa-reviewer.md
 /.github/agents/dev-stage-runner.md
 
@@ -296,8 +298,8 @@ they are meant to be tracked, and so are the agent definitions.
      built-in fallback for each role it dispatches, so a target without
      these definitions still works — it just spends more and enforces the
      read-only roles by prose. Say so in your report rather than stopping.
-   - **Never pin a `model:` into a copied definition.** All five roles are
-     reasoning roles and inherit the session's model by omitting the
+   - **Never pin a `model:` into a copied definition.** Every shipped role
+     is a reasoning role and inherits the session's model by omitting the
      property. The mechanical tier is served by the built-in `explore` and
      `task` agents, which already run lightweight models — which is why
      step 3.6's recorded model is a *fallback* for roles the built-ins do
@@ -574,8 +576,8 @@ when `Enabled` is `no` there is no such row to disagree.
   would hide skills this installer never created. The same goes for agent
   definitions: name each `dev-*.md` file, never the `.github/agents/`
   directory, which the target may already be using for its own agents.
-- **Never pin a `model:` into an agent definition you copy.** All five
-  shipped roles are reasoning roles and inherit the session's model by
+- **Never pin a `model:` into an agent definition you copy.** Every
+  shipped role is a reasoning role and inherits the session's model by
   leaving the property unset. The cheap tier comes from routing mechanical
   work to the built-in `explore` and `task` agents, not from cheapening a
   role that exists to exercise judgment.

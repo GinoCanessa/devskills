@@ -16,8 +16,14 @@ dispatched you transcribes it.
 
 - The absolute paths of the approach files to judge.
 - The absolute path of the source request or bug report they answer.
-- The repository's conventions and architectural invariants.
 - Optionally, the user's focus text.
+
+**Read the repository's `AGENTS.md` yourself** for the conventions and
+architectural invariants step 3 below judges against, falling back to
+`README.md` / `CONTRIBUTING.md` where it does not exist. You are given
+its path, not its contents: an invariant you were handed as text is one
+you cannot quote back to the file, and quoting it is the whole substance
+of that finding.
 
 You are **not** told which design axis produced which file. That is
 deliberate. Attack the claims each file makes about itself rather than a

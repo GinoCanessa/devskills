@@ -211,8 +211,12 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
       and only then continue. Never edit an undeclared path.
    2. After pre-flight succeeds, set both the phase and top-level plan
       status to `In-progress`.
-   3. Execute the phase steps. Use sub-agents only where independent
-      work justifies them, and never exceed `max_subagents`.
+   3. Execute the phase steps by dispatching a `dev-implementer` with
+      the plan path, this phase's identifier, and its `**Owned paths:**`
+      as the files it owns. Split the phase across several implementers
+      only where the slices touch disjoint files and each is substantial
+      enough to earn its own context, and never exceed `max_subagents`.
+      See § *Sub-Agent Use* for the one edit you make yourself.
    4. Run every phase `Verification` command. If a command fails,
       debug within reasonable scope. If it cannot be made green, mark
       the phase and plan `Blocked` with an actionable reason and stop.
@@ -295,10 +299,24 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
     adversarial critique is useful.
   - **`general-purpose`** only for work that needs the full toolset and
     genuine judgment, and that none of the above covers.
-- **Delegating a single file edit costs more than doing it.** A sub-agent
-  pays for its own context before it writes a line. Delegate work that is
-  independent, parallel, or large enough to be worth a separate context —
-  not work that is merely separable.
+- **A phase's code is written by a `dev-implementer`, not by you.**
+  Dispatch one per phase as the default. You are the conductor of this
+  stage: you read the plan, decide what each phase means, integrate what
+  comes back, verify it, update the status, and commit. Writing the code
+  yourself puts it in whatever context happens to be holding this skill —
+  which under `dev-complete` is a stage runner carrying the whole run's
+  history, and which in any case carries none of the implementer's brief.
+- **Fan-out is a separate decision from delegation.** One implementer per
+  phase is not a fan-out; it is where the work belongs. Run *several* in
+  parallel only when the phase splits into slices that touch disjoint
+  files and each slice is substantial enough to be worth its own context.
+  A phase split three ways for the sake of parallelism pays three context
+  startups to write what one implementer would have written in sequence.
+- **The exception is an edit the plan already specifies verbatim** — a
+  version bump, a constant the plan names, a rename it spells out in
+  full. There is no judgment left in it to delegate, and the round trip
+  would cost more than the edit. Anything that requires reading
+  surrounding code to get right is not this.
 - Do **not** delegate the plan-status updates or the commits — you own
   those. Sub-agents return work; you integrate, verify, and commit.
 
@@ -311,7 +329,7 @@ spawning agent's model.
 
 | Role | Tier | Agent |
 |-|-|-|
-| Implementing an owned-file slice of a phase | reasoning | `general-purpose` |
+| Implementing a phase, or an owned-file slice of one | reasoning | `dev-implementer` |
 | Adversarial critique of an approach mid-phase | reasoning | `rubber-duck` |
 | Diagnosing a failed verification command | reasoning | `general-purpose` |
 | Reviewing a diff you just produced | reasoning | `code-review` |

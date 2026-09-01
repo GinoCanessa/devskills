@@ -374,10 +374,11 @@ line above is the half a human sees first.
   carries the isolation rules and the designer-not-implementer constraint
   in its own definition; fall back to `general-purpose` where it is not
   loaded, and state those rules explicitly in the prompt when you do.
-  Each one is given: the full source text, the
-  conventions and architectural invariants from `AGENTS.md`, the user's
-  focus text if any, its own axis, and its own output path — and
-  nothing else.
+  Each one is given: the **absolute path** of the source, the user's
+  focus text if any, its own axis, and its own output path — and nothing
+  else. It reads the source and `AGENTS.md` itself, as every agent in the
+  loop does; handing three authors the text of both would put the same
+  two files into three contexts to save each of them one read.
 - **Each author is explicitly forbidden** from reading, globbing for,
   listing, or writing any `approach*.md` other than its own. This is
   the whole point of fanning out: if the authors collapse into one, you

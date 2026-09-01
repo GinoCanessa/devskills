@@ -47,7 +47,7 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-issue/` | GitHub issue writer — sole writer of issues and of the `Issue` binding row; owns the Resolve-and-Record Protocol. |
 | `.github/skills/dev-pr-open/` | Push + PR — the only skill permitted to do either. |
 | `.github/skills/dev-complete/` | Orchestrator role — drives the whole chain in one invocation; owns no artifact. |
-| `.github/agents/` | Shared named sub-agent roles (`dev-approach-author`, `dev-approach-judge`, `dev-eng-reviewer`, `dev-qa-reviewer`, `dev-stage-runner`). Copied into targets alongside the skills. |
+| `.github/agents/` | Shared named sub-agent roles (`dev-approach-author`, `dev-approach-judge`, `dev-change-reviewer`, `dev-eng-reviewer`, `dev-implementer`, `dev-qa-reviewer`, `dev-stage-runner`). Copied into targets alongside the skills. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target repo. |
 | `scratch/` | Local feature requests / plans / analyses (**ignored**). |
 
@@ -283,8 +283,17 @@ change to a skill done:
    $portable = @(Get-ChildItem .github\skills -Directory -Exclude dev-setup |
                  Get-ChildItem -Recurse -File) +
                @(Get-ChildItem .github\agents -File -Filter 'dev-*.md')
-   $portable | Select-String -Pattern '(claude|gpt|gemini|grok|mai)-[0-9]'
+   $portable | Select-String -Pattern '(claude|gpt|gemini|grok|mai)-[a-z0-9.-]*[0-9]'
    ```
+
+   **The tier word between the family and the version is why the class
+   is `[a-z0-9.-]*` rather than an immediate digit.** Anchoring the digit
+   directly to the family name — `(claude|gpt|…)-[0-9]` — only matches
+   the older `claude-3-5-sonnet` shape and misses every current id:
+   `claude-haiku-4.5`, `claude-sonnet-4-5`, and `claude-opus-5` all pass
+   it silently, and the first of those is the very id this repository
+   records as its mechanical tier. A check that cannot catch the value
+   in the row below it is not a check.
 
    `dev-setup` is excluded on the usual grounds, and it is the one skill
    that legitimately *proposes* a mechanical-tier model — it has to, since
@@ -338,16 +347,19 @@ change to a skill done:
     must return nothing from both arms:
 
     ```powershell
-    $have = (Get-ChildItem .github\agents -Filter 'dev-*.md' -File).BaseName
+    $have   = (Get-ChildItem .github\agents -Filter 'dev-*.md' -File).BaseName
+    $skills = (Get-ChildItem .github\skills -Directory).Name
     # arm 1 — agents cited in a worker skill
     Get-ChildItem .github\skills -Directory -Exclude dev-setup |
       Get-ChildItem -Recurse -File | ForEach-Object {
         $f = $_
         [regex]::Matches((Get-Content $f.FullName -Raw -Encoding utf8),
-                         '`(dev-[a-z-]*(?:author|judge|reviewer|runner))`') |
+                         '`(dev-[a-z-]+)`') |
           ForEach-Object {
             $n = $_.Groups[1].Value
-            if ($have -notcontains $n) { "$($f.Directory.Name) -> $n : NO SUCH AGENT" }
+            if ($skills -notcontains $n -and $have -notcontains $n) {
+              "$($f.Directory.Name) -> $n : NO SUCH AGENT"
+            }
           }
       }
     # arm 2 — the filename list dev-setup writes into an exclude block
@@ -358,11 +370,18 @@ change to a skill done:
       ForEach-Object { "dev-setup exclude list: {0} {1}" -f $_.SideIndicator, $_.InputObject }
     ```
 
-    **Arm 1 matches on role-name *shape*** — `*author`, `*judge`,
-    `*reviewer`, `*runner` — rather than on a fixed list, so a role
-    invented later is caught without anyone remembering to extend it. It
-    cannot collide with a skill name, since no skill ends in any of those,
-    and check 3 already covers skill references.
+    **Arm 1 resolves every backticked `dev-*` token against both
+    directories and reports what neither explains.** It deliberately does
+    *not* match on role-name shape — a suffix list of `author`, `judge`,
+    `reviewer`, `runner` reads as though it generalizes, but it only ever
+    catches roles someone remembered to name that way, and it silently
+    stopped covering the set the day `dev-implementer` was added.
+    Subtracting the two directories needs no list at all: a token is a
+    skill, an agent, or a defect, and adding either kind of file extends
+    the check by existing. `dev-setup` stays in `$skills` so a citation of
+    the installer resolves, and check 3 still owns whether a skill
+    reference points at a real skill; this arm only asks whether *some*
+    directory explains the name.
 
     **Arm 1 deliberately excludes `dev-setup`, and arm 2 is why.** The
     installer never *dispatches* an agent; it names them as bare paths
@@ -486,6 +505,23 @@ These are decisions, not preferences. Violating one is a review Blocker.
   `max_subagents` is a *concurrency* ceiling and cannot bound total spend;
   only a stated threshold can. A fan-out that re-reads the same small
   input into three contexts costs more than the pass it replaced.
+- **Hand a sub-agent paths, not file contents.** Every named role reads
+  `AGENTS.md`, its source artifact, and the code it needs from disk. A
+  file pasted into a prompt is paid for once per sub-agent — three
+  approach authors handed `AGENTS.md` carry it three times to save three
+  reads — and it goes stale the moment the file changes underneath it,
+  with no way for the agent to notice. The one exception is
+  `dev-complete`'s authoring stage, which passes raw content because the
+  artifact does not exist yet; it is documented there as an exception.
+- **Work belongs in a role, not in the caller.** A skill that has defined
+  an agent for a job dispatches it even when the job looks small enough
+  to absorb. The caller may be running a model chosen for orchestration,
+  it holds tools the role deliberately lacks, and it may be the same
+  context that produced the thing under examination. A cost threshold
+  decides **how many** agents run — one reviewer instead of two, one
+  implementer instead of three — never whether the work happens in a role
+  at all. `dev-review` § *Sub-Agent Use* and `dev-do` § *Sub-Agent Use*
+  carry the two instances.
 - **Prefer a built-in agent to a general-purpose one.** `explore` and
   `task` already run lightweight models, so routing discovery and
   documented-command runs to them *is* the mechanical tier — no `model:`

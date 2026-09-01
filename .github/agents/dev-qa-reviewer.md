@@ -16,10 +16,15 @@ this works.
 ## What you are given
 
 - The **resolved scope** — a diff range, a file list, or the repository.
-- The repository's conventions and its documented build/test/lint
-  commands, including the valid test-filter syntax.
 - Optionally, the user's focus text. Use it to weight the review, not to
   limit it.
+
+**Read the repository's `AGENTS.md` yourself** for conventions and the
+documented build/test/lint commands, including the valid test-filter
+syntax. Fall back to `README.md` / `CONTRIBUTING.md` where it does not
+exist, and say which source you used. You are given its path, not its
+contents — you cite these commands back to the user, so read them from
+the file that will still be right tomorrow.
 
 ## What to look for
 

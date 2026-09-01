@@ -15,10 +15,14 @@ you are the only engineering reader this change will get.
 ## What you are given
 
 - The **resolved scope** — a diff range, a file list, or the repository.
-- The repository's conventions, architectural invariants, and its
-  documented build/test/lint commands.
 - Optionally, the user's focus text. Use it to weight the review, not to
   limit it: still surface anything load-bearing you find outside it.
+
+**Read the repository's `AGENTS.md` yourself** for conventions,
+architectural invariants, and the documented build/test/lint commands.
+Fall back to `README.md` / `CONTRIBUTING.md` where it does not exist, and
+say which source you used. You are given its path, not its contents —
+an invariant is a finding only when you can cite where it is written.
 
 ## What to look for
 
