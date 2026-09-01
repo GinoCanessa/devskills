@@ -336,6 +336,51 @@ they are meant to be tracked, and so are the agent definitions.
    survives until the next re-run. Do not shorten a description in the
    target yourself.
 
+4.6. **Check every copied agent definition's `tools:` list against the
+   vocabulary the CLI actually recognizes.** An unrecognized tool id is
+   not an error and does not stop the agent loading: the role loads,
+   silently without that access, and simply cannot do its job. A reviewer
+   that cannot run `git diff` reviews nothing; an implementer that cannot
+   run the build verifies nothing. That is step 4.5's failure shape — a
+   clean-looking install and a role that does not work — so it earns step
+   4.5's treatment.
+
+   The recognized ids are `shell`, `read`, `search`, `edit`, `task`,
+   `skill`, `web_search`, `web_fetch`, and `ask_user`. Nothing else is a
+   tool, however plausible it reads.
+
+   ```powershell
+   $validTools = 'shell','read','search','edit','task','skill',
+                 'web_search','web_fetch','ask_user'
+   if (Test-Path $agentsDir) {
+     Get-ChildItem $agentsDir -Filter 'dev-*.md' -File | ForEach-Object {
+       $fm = [regex]::Match((Get-Content $_.FullName -Raw -Encoding utf8),
+                            '(?s)\A---\r?\n(.*?)\r?\n---').Groups[1].Value
+       $m = [regex]::Match($fm, '(?m)^tools:\s*\[(.*?)\]')
+       if (-not $m.Success) { '{0,-22} (unrestricted)' -f $_.BaseName; return }
+       $bad = $m.Groups[1].Value -split ',' |
+                ForEach-Object { $_.Trim().Trim("'`"") } |
+                Where-Object { $_ -and $validTools -notcontains $_ }
+       '{0,-22} {1}' -f $_.BaseName,
+         $(if ($bad) { "UNKNOWN TOOL: $($bad -join ', ')" } else { 'ok' })
+     }
+   }
+   ```
+
+   - **An absent `tools:` line is valid, and grants *all* tools.** It
+     reports as `(unrestricted)` and is never a finding. `dev-stage-runner`
+     is deliberately unrestricted, because the stage it runs may need any
+     tool in the loop; adding a restrictive list to it is a regression, not
+     a tidy-up. Print the `(unrestricted)` row rather than skipping it, so
+     the deliberate case is visible as deliberate to whoever reads the
+     report next.
+   - **An unrecognized id is a blocking finding.** Name the agent and the
+     id, tell the user to correct it **in the canonical source** and
+     re-run, and do not edit the target's copy yourself — that only
+     survives until the next re-run. This is 4.5's rule, for 4.5's reason.
+   - **A missing `$agentsDir` is not an error**, for step 4.2's reason.
+     Report it the same way.
+
 5. **Write the ignore rules** for the settled mode, using the sentinel block
    and the mode-switch rules above. Never edit `.gitignore` in `exclude`
    mode.
@@ -481,6 +526,11 @@ they are meant to be tracked, and so are the agent definitions.
      a `---` fenced YAML block carrying a `description`, and a `name` that
      matches its filename. Report "no agent definitions in the canonical
      source" as a pass with a note, not a failure.
+   - Every copied agent definition's `tools:` list draws only on the
+     recognized vocabulary (step 4.6). Report **every** agent's result,
+     including the deliberate `(unrestricted)` rows — an omitted row reads
+     exactly like a passing one, and this check exists precisely because
+     the failure it catches is silent.
    - Every copied skill's `description` is **≤ 1024 characters** (step 4.5).
      Report the measured length of each, not just a pass/fail — a skill
      sitting a few characters under the limit is one edit away from going
@@ -515,7 +565,8 @@ they are meant to be tracked, and so are the agent definitions.
 10. **Report back.** State: the resolved `TARGET`; the git mode and which
     file received the rules (plus any mode migration); the nine skills
     copied; the agent definitions copied, or that the canonical source had
-    none; the GitHub integration answer and every value recorded for it;
+    none, and each one's `tools:` result from step 4.6; the GitHub
+    integration answer and every value recorded for it;
     the subagent model policy and, under `tiered`, the mechanical-tier
     model recorded; the `AGENTS.md` outcome (created / audited) with every
     outstanding `{TBD}`; a compact summary of the detected stack; and the
