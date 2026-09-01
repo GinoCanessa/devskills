@@ -1,7 +1,7 @@
 ---
 name: dev-qa-reviewer
 description: Runs the QA Lead half of a dev-review pass over an assigned scope — test coverage, edge cases, regression risk, and verifiability — and returns structured findings. Read-only. Dispatched programmatically by dev-review.
-tools: [read, search, execute]
+tools: [read, search, shell]
 user-invocable: false
 ---
 

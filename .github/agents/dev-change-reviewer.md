@@ -1,7 +1,7 @@
 ---
 name: dev-change-reviewer
 description: Reviews a small change set across both the engineering and QA dimensions in one context, running the two passes in order, and returns one combined set of findings. Read-only. Dispatched programmatically by dev-review when the scope is below its fan-out threshold.
-tools: [read, search, execute]
+tools: [read, search, shell]
 user-invocable: false
 ---
 

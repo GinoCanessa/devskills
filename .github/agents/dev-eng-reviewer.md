@@ -1,7 +1,7 @@
 ---
 name: dev-eng-reviewer
 description: Runs the Engineering Lead half of a dev-review pass over an assigned scope — antipatterns, hot paths, consistency errors, dead code, design issues, and the provenance of the changed lines — and returns structured findings. Read-only. Dispatched programmatically by dev-review.
-tools: [read, search, execute]
+tools: [read, search, shell]
 user-invocable: false
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: dev-implementer
 description: Implements one phase of an execution plan, or one owned-file slice of a phase, and returns a summary of what changed. Never commits, never stages, and never edits the plan. Dispatched programmatically by dev-do.
-tools: [read, search, edit, execute]
+tools: [read, search, edit, shell]
 user-invocable: false
 ---
 
