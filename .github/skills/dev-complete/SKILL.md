@@ -269,9 +269,9 @@ these branches in order, **first match wins**:
    new `COMMIT` entries — and marks nothing `Blocked`, so branch 5 would
    read it as a stage that yielded early and re-dispatch it to yield
    identically.
-2. **The artifact is byte-identical to the baseline** → **blocker**.
-   Hand back and name it. Scope this to *unchanged from what this
-   dispatch was handed*, never to "the stage had nothing to do":
+2. **The artifact is byte-identical to the baseline** → **one
+   diagnose-then-retry, then blocker**. Scope this to *unchanged from what
+   this dispatch was handed*, never to "the stage had nothing to do":
    § *Resume* skips a complete stage by its status marker, so a stage
    with nothing to do is never dispatched at all. The likeliest instance
    is the most damning — `dev-do`'s pre-flight gate refuses a non-empty
@@ -279,6 +279,40 @@ these branches in order, **first match wins**:
    `Ready-to-execute` with every phase `Pending`, and without this
    branch the rule to classify from disk makes a blocker this skill
    already lists structurally undetectable.
+
+   **The first unchanged return earns one re-dispatch, not a hand-back.**
+   This is the least diagnosable outcome in the run: the stage wrote
+   nothing, so it also wrote no `- HANDBACK |` line, and disk therefore
+   records neither what it attempted nor why it stopped. That is
+   indistinguishable from a stage whose sub-agent never started, or one
+   that could not reach a tool its skill needs — both recoverable, and
+   both otherwise spending none of the three dispatches § *Retry and
+   Hand-Back* grants every stage.
+
+   **The retry is a diagnose-then-retry dispatch, never a bare one**, on
+   the reasoning that section already gives for a `Blocked` phase.
+   Alongside the five standard inputs, a retry dispatch hands the stage
+   sub-agent:
+
+   - **the fact that its previous dispatch left the artifact
+     byte-identical**, named as such, with that artifact's absolute path;
+   - **an instruction to diagnose the cause first** — a safety gate it
+     refused, an input that was absent, a tool it could not reach — and
+     only then to proceed;
+   - **an instruction to state what it found explicitly in what it
+     returns**, even when it still cannot write. A stage that refuses
+     again for a reason it *names* converts the least diagnosable outcome
+     in the run into the most.
+
+   **A second consecutive unchanged return is the blocker.** Hand back,
+   name both dispatches, and quote whatever the retry reported — that
+   text is the only account of the failure that exists, because nothing
+   reached disk.
+
+   This costs `dev-do`'s pre-flight refusal one extra dispatch, and buys
+   a refusal that *says* the index was dirty in place of a silent return
+   that looks like every other unchanged one. That is the better trade,
+   not a reluctant one.
 3. **An authoring stage** is judged by re-reading the artifact's `Status`
    row.
 4. **The plan stage** is judged by re-reading `plan.md`'s `Status` row.
@@ -611,6 +645,16 @@ the cases a re-dispatch loop is made of. Count dispatches per stage,
 across resumes, using the `attempt <k>` on that stage's `- HANDBACK |`
 line; a stage that exhausts three is a blocker.
 
+**An unchanged-artifact retry spends one of those three dispatches.** It
+opens no fourth counter: § *Stage Dispatch* bounds it at one retry, and
+that retry is a dispatch like any other. The count has one honest limit
+— an unchanged return writes no `- HANDBACK |` line, so nothing records
+it on disk and the tally is **in-session only**. A run resumed tomorrow
+starts that stage's unchanged count at zero and may therefore repeat the
+one retry. Bounded, cheap, and undurable: report it as undurable, in the
+register the second carve-out in § *The Standing Directive* already
+uses, rather than implying a count that survived the session.
+
 **A retry is a diagnose-then-resume dispatch, never a bare
 re-dispatch.** `dev-do` § *Iteration Mode (Recovery Path)* resumes a
 `Blocked` phase only when the blocker is demonstrably resolved, and
@@ -650,7 +694,9 @@ blockers:
 - a repository state it cannot safely act on, including anything
   `dev-do`'s pre-flight gate refuses;
 - a stage that returns with its artifact byte-identical to the baseline
-  recorded before the dispatch;
+  recorded before the dispatch, on **two consecutive dispatches** — the
+  first such return earns the diagnose-then-retry in § *Stage Dispatch*
+  instead;
 - a `dev-do` **scope-exceeded yield** — non-overridable, marking nothing
   `Blocked` and requiring no `NOTE`, so nothing else in this list would
   catch it;
