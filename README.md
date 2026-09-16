@@ -21,6 +21,8 @@ it, and can later attach the finished `plan.md` as a managed comment.
 `dev-pr-open` is the terminal step that pushes the branch and opens the PR.
 `dev-complete` runs the authoring chain end to end for you — `dev-approach`
 is optional when you drive the loop by hand, and mandatory inside a run.
+Its `automatic` mode answers stage questions for you; `interactive` brings
+them to you while still orchestrating every step.
 
 `dev-setup` is the installer that copies the other nine into a target repo.
 
@@ -36,7 +38,7 @@ is optional when you drive the loop by hand, and mandatory inside a run.
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
 | `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
-| `dev-complete` | Orchestrator | a slot + a kind + content | *nothing of its own; drives the skills that write* |
+| `dev-complete` | Orchestrator | a slot + a kind + content + optional mode | *nothing of its own; drives the skills that write* |
 | `dev-setup` | Setup engineer | a target repo | installed skills + agents + `AGENTS.md` |
 
 Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
@@ -151,18 +153,36 @@ Every skill also accepts a full path if you need a previous day's slot.
 
 Or drive the whole authoring chain with one invocation:
 
-```
+```text
 dev-complete 1 request "Add a --dry-run flag to the export command"
-dev-complete 1 report  gh#412
+dev-complete 1 report gh#412 mode: automatic
+dev-complete 1 request "Add a --dry-run flag to the export command" mode: interactive
 ```
 
 `dev-complete` runs `dev-request` / `dev-report` → `dev-approach` →
-`dev-plan` → `dev-do`, then a `dev-review` remediation tail. It answers the
-open questions each stage would have parked, records every answer in that
-stage's own artifact, and reports them all at the close for you to review
-once. It stops only on a genuine blocker, and it commits locally without
-ever pushing or opening a PR. The hand-driven loop above is unchanged and
-still fully supported — use it whenever you want a gate between stages.
+`dev-plan` → `dev-do`, then a `dev-review` remediation tail. Choose how it
+handles decisions:
+
+- **`automatic` (default):** the existing fully automated behavior. It
+  answers stage questions, records assumptions in each stage's own
+  artifact, and reports every one at the close. Questions do not pause
+  the run; genuine blockers do.
+- **`interactive`:** the same orchestration, with request/report and plan
+  questions brought to you, plus confirmation of the selected approach
+  and the plan before execution, including remediation work. Each prompt
+  has up to three concrete options with explanations and trade-offs,
+  exactly one recommendation justified against the alternatives, and
+  room for a custom answer or follow-up question. Answers are applied by
+  the owning stage before the next question. Deferring an answer leaves
+  the run awaiting you, not failed or silently approved.
+
+Both modes commit locally, never publish to GitHub, push, or open a PR,
+and preserve the same safety gates. Optional `max_subagents` defaults to
+`3`; `review_iterations` defaults to `1`, and `0` skips the review tail.
+Resume with the reported full-path command, which includes the mode and
+budgets. Omitting `mode` always means `automatic`, even on resume.
+Interactive mode does not add per-phase checkpoints; use `dev-do`'s
+`checkpoint_every` input in the unchanged hand-driven loop for those.
 
 `dev-pr-open` is the exception: given no slot it publishes **every local
 commit ahead of the default branch**, spanning as many slots, requests, and

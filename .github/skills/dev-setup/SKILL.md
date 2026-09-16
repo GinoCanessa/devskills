@@ -10,7 +10,8 @@ One invocation makes a repo ready to use `dev-request` → `dev-report` →
 `dev-approach` → `dev-plan` → `dev-do` → `dev-review` → `dev-pr-open`,
 with `dev-issue` as an opt-in side branch that publishes any of those
 artifacts to GitHub, and `dev-complete` as the orchestrator that drives
-the whole chain in a single invocation.
+the whole chain in a single invocation — in default `automatic` mode or
+in `interactive` mode with stage questions and confirmations.
 
 This skill is the **installer**. It runs from the canonical source
 repository (this one) and copies the *other* nine skills into a target

@@ -541,11 +541,15 @@ These are decisions, not preferences. Violating one is a review Blocker.
 - **`dev-complete` owns no artifact.** It orchestrates; every slot file is
   still written by the skill that owns it, dispatched as a stage. It never
   edits an artifact to fix a stage's work.
-- **A question never stops a `dev-complete` run; a blocker always does.**
-  Resolving a question into a recorded assumption is the point of the
-  skill. An undocumented command, an unexplained failure, or a hand-off
-  offer is not a question it may resolve on the merits — the first two are
-  blockers, and every publish or hand-off offer resolves to *decline*.
+- **`dev-complete` defaults to `automatic`; `interactive` asks the user.**
+  Automatic runs resolve questions into recorded assumptions. Interactive
+  runs relay stage questions and confirmations with up to three justified
+  options, one justified recommendation, and free-form responses. The
+  owning stage records actual user answers separately from assumptions;
+  awaiting an answer never spends a failure attempt. A blocker stops both
+  modes: undocumented commands and unexplained failures are not preference
+  questions. Every publish or duplicate hand-off offer still resolves to
+  *decline*; neither mode changes ownership or safety gates.
 
 ---
 
