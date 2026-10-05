@@ -16,17 +16,21 @@ repository itself, the repository wins — fix this file.
 
 The **canonical source** for the `dev-*` Copilot skills. It contains no
 application code: it is a documentation repository whose artifacts are
-markdown skill definitions that get copied into *other* repositories by
-`dev-setup`.
+markdown skill definitions and portable documentation assets copied into
+*other* repositories by `dev-setup`.
 
-The framing fact that settles arguments here: **the nine worker skills
+The framing fact that settles arguments here: **the ten worker skills
 must contain zero repository-specific knowledge.** Anything that varies
 between repositories belongs in that repository's own `AGENTS.md`, not in a
 skill. If a proposed edit to `dev-do`, `dev-plan`, `dev-approach`,
 `dev-review`, `dev-request`, `dev-report`, `dev-issue`, `dev-pr-open`, or
-`dev-complete` mentions a concrete build command, a project name, a
-language, or a framework as anything other than a neutral example, it is
-wrong.
+`dev-complete`, or `dev-explore` mentions a concrete build command, a
+project name, a language, or a framework as anything other than a neutral
+example or a portable output format, it is wrong.
+
+`dev-explore`'s HTML, stylesheet, and theme-selection assets define its
+portable output format, not a target repository's application stack.
+They must contain no target-specific content or external dependencies.
 
 `dev-setup` is the one exception: it is the installer, so it legitimately
 knows about stacks, detection heuristics, and git plumbing.
@@ -47,7 +51,8 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-issue/` | GitHub issue writer — sole writer of issues and of the `Issue` binding row; owns the Resolve-and-Record Protocol. |
 | `.github/skills/dev-pr-open/` | Push + PR — the only skill permitted to do either. |
 | `.github/skills/dev-complete/` | Orchestrator role — drives the whole chain in one invocation; owns no artifact. |
-| `.github/agents/` | Shared named sub-agent roles (`dev-approach-author`, `dev-approach-judge`, `dev-change-reviewer`, `dev-eng-reviewer`, `dev-implementer`, `dev-qa-reviewer`, `dev-stage-runner`). Copied into targets alongside the skills. |
+| `.github/skills/dev-explore/` | Documentation-only loop — owns exploration artifacts and Markdown or static HTML output, including the portable theme assets. |
+| `.github/agents/` | Shared named sub-agent roles (`dev-approach-author`, `dev-approach-judge`, `dev-change-reviewer`, `dev-eng-reviewer`, `dev-explore-reviewer`, `dev-implementer`, `dev-qa-reviewer`, `dev-stage-runner`). Copied into targets alongside the skills. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target repo. |
 | `scratch/` | Local feature requests / plans / analyses (**ignored**). |
 
@@ -123,6 +128,8 @@ change to a skill done:
    `approach-a.md`, `approach-b.md`, `approach-c.md`, `approach.md`,
    `plan.md`, `analysis.md`, `AGENTS.md`) match what the authoring skill
    actually writes.
+   The separate exploration loop owns `request.md`, `approaches.md`,
+   `outline.md`, `sources.md`, and `review.md`.
 
 4. **Real-world check.** For a non-trivial change, run `dev-setup` against a
    throwaway `git init` repo in both `include` and `exclude` mode and
@@ -173,7 +180,7 @@ change to a skill done:
    start — it never loads, never appears in the agent's skill list, and
    raises no error. Because this repo is the canonical source, an
    over-limit description here propagates to every repo that runs
-   `dev-setup`. This must report `ok` for all ten skills:
+   `dev-setup`. This must report `ok` for all eleven skills:
 
    ```powershell
    Get-ChildItem .github\skills -Directory | ForEach-Object {
@@ -393,6 +400,23 @@ change to a skill done:
     it catches an agent added without an ignore rule *and* a rule left
     behind after an agent was removed.
 
+12. **The documentation starter works without a toolchain.** Inspect
+    `dev-explore`'s HTML contract and its three assets. Check local
+    references, labelled theme controls, no remote dependencies, and
+    absence of target-specific content. Open a filled-in copy in an
+    available browser and check all five palettes in light and dark,
+    system preference changes, explicit overrides, storage failure,
+    reload and cross-page persistence, no-script reading, narrow screens,
+    keyboard focus, and print output. Check contrast against the
+    contract's numerical thresholds. Record unavailable browser checks
+    honestly; do not install a framework.
+
+    Reuse the browser's native inspection or automation support and
+    existing local tools for these checks; temporary inspection scripts
+    belong in the session workspace, not in a new repository test suite.
+    Installer verification must compare every copied support file's
+    relative path and hash, not just count `SKILL.md` files.
+
 ---
 
 ## Lint / format
@@ -403,8 +427,9 @@ No separate lint step. Do not add one.
 
 ## Run
 
-Nothing runs. The skills are loaded by the Copilot CLI at session start when
-a session is opened in a repo containing `.github/skills/`.
+There is no application. The skills are loaded by the Copilot CLI at
+session start in a repo containing `.github/skills/`. The documentation
+starter can be opened directly in a browser; it requires no build.
 
 To exercise a change, start a fresh session — edits to a `SKILL.md` do not
 hot-load into the running session.
@@ -413,7 +438,9 @@ hot-load into the running session.
 
 ## Code style
 
-Markdown, authored for a model to read.
+Markdown is authored for a model to read. The static documentation
+starter uses plain HTML, CSS, and a dependency-free theme script; it must
+not acquire a build system or application logic.
 
 - UTF-8, CRLF, final newline, no trailing whitespace.
 - **Wrap prose at 76 columns.** Every existing skill does; keep diffs
@@ -436,7 +463,7 @@ Markdown, authored for a model to read.
 These are decisions, not preferences. Violating one is a review Blocker.
 
 - **Worker skills are repo-agnostic.** See "What this repository is". The
-  nine worker skills must be safe to copy byte-for-byte into any
+  ten worker skills must be safe to copy byte-for-byte into any
   repository.
 - **`AGENTS.md` is the only repo-specific channel.** A worker skill that
   needs repository knowledge must instruct the agent to *read `AGENTS.md`*,
@@ -455,11 +482,23 @@ These are decisions, not preferences. Violating one is a review Blocker.
   by the skill that owns it. `dev-plan` and `dev-do` treat the source
   request as read-only, and `dev-plan` treats the four approach artifacts
   as read-only in exactly the same way. The `Issue`
-  binding row is the one value that appears in **every** slot artifact:
+  binding row is the one value in **every implementation-slot** artifact:
   whichever skill authors a file propagates the row into it under the
   **no-downgrade ratchet** — an existing `#N` is never replaced with
   `not published` — and only `dev-issue` resolves a disagreement between
   two artifacts.
+- **`dev-explore` owns a separate documentation loop.** It owns
+  `request.md`, `approaches.md`, `outline.md`, `sources.md`, `review.md`,
+  and its manifest-listed documentation output, never implementation
+  artifacts. Exploration slots have a `Workflow: dev-explore` marker,
+  no issue binding, and cannot be passed into the code/commit chain.
+  An explicit output directory grants documentation writes only, never
+  application changes, configuration edits, or publishing.
+- **The documentation theme is portable and complete.** Copy its assets
+  recursively. Every generated HTML page supports system, light, and dark
+  modes, accessible selection, and explicit storage-failure reporting.
+  Palettes must remain readable in both themes and introduce no network
+  or build dependencies.
 - **`dev-review` is read-only** with respect to the codebase. It writes
   `analysis.md` and nothing else.
 - **`dev-do` commits locally, never pushes, never opens a PR.** Its
@@ -535,7 +574,7 @@ These are decisions, not preferences. Violating one is a review Blocker.
   `git diff` from a mutating command, so the read-only prose stays too.
 - **`dev-setup` never stages, commits, or pushes,** and never edits a shared
   `.gitignore` in `exclude` mode.
-- **`dev-setup` is never installed into a target repo.** Only the nine
+- **`dev-setup` is never installed into a target repo.** Only the ten
   worker skills are, together with the `.github/agents/dev-*.md`
   definitions they dispatch. The installer never ships itself.
 - **`dev-complete` owns no artifact.** It orchestrates; every slot file is
@@ -591,6 +630,23 @@ scratch/<MMDD>-<##>/
   plan.md              # authored by dev-plan, updated by dev-do
   analysis.md          # authored by dev-review
 ```
+
+An **exploration slot** is separate from an implementation slot:
+
+```text
+scratch\<MMDD>-<##>\
+  request.md           # dev-explore; Workflow: dev-explore
+  approaches.md        # documentation shapes and selection
+  sources.md           # source inventory and evidence map
+  outline.md           # pages, sections, and question coverage
+  review.md            # review of the current deliverable
+  output\              # default; an explicit docs-only path is allowed
+    README.md          # Markdown entry, or index.html for HTML
+```
+
+All exploration artifacts are owned by `dev-explore`. Its request records
+the output manifest, progress, options, and cumulative delegation budget.
+It never commits, including when the output directory is outside scratch.
 
 - `<MMDD>` is the local date (zero-padded month + day); `<##>` is a
   zero-padded two-digit slot number.

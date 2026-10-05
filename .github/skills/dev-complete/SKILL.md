@@ -161,6 +161,9 @@ The run, in order:
    ask, do not guess"* guard, and nothing else replaces it — so
    proceeding would author a second competing source and orphan the
    first.
+   A slot whose `request.md` carries `| Workflow | dev-explore |` is
+   also a blocker. It belongs to the documentation-only loop; use a
+   different slot rather than feeding it into the code/commit chain.
 3. Read the repository's `AGENTS.md` for conventions and commands, with
    the documented fallback to `README.md` / `CONTRIBUTING.md`, and say
    which source you used.

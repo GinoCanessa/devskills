@@ -1,6 +1,6 @@
 ---
 name: dev-setup
-description: "Bootstraps a repository for local inner-loop development with the `dev-*` skills. USE FOR: setting up a repo clone so `dev-request`, `dev-report`, `dev-approach`, `dev-plan`, `dev-do`, `dev-review`, `dev-issue`, `dev-pr-open`, and `dev-complete` are available, scaffolding or auditing the repo-root `AGENTS.md` that those skills read for build/test commands and conventions, and wiring up `scratch/`. Asks whether the setup should be **included in** or **excluded from** git; when excluded it writes per-skill rules to `.git/info/exclude` and leaves the shared `.gitignore` untouched. Also asks whether the opt-in GitHub integration should be enabled, and records the answer — along with the target repository, label mapping, changelog location, and draft-PR policy — in the target's `AGENTS.md`. Accepts an optional path to the target repo (defaults to the current git repository) and an optional `git_mode` of `include` or `exclude`. Idempotent and re-runnable. Never commits, never pushes."
+description: "Installs or refreshes the portable `dev-*` skills, shared agents, and documentation assets in a target repository. USE FOR: setting up the development loop and the documentation-only `dev-explore` loop, scaffolding or auditing root `AGENTS.md`, and wiring up `scratch/`. Asks whether setup is included in or excluded from git; exclude mode uses per-skill rules in `.git/info/exclude` and leaves the shared `.gitignore` untouched. Records opt-in GitHub integration settings and the subagent model policy in the target's `AGENTS.md`. Accepts an optional target path (default: current repository) and `git_mode` of `include` or `exclude`. Idempotent and re-runnable. Never installs itself, stages, commits, or pushes."
 ---
 
 # Dev Setup Skill
@@ -12,16 +12,18 @@ with `dev-issue` as an opt-in side branch that publishes any of those
 artifacts to GitHub, and `dev-complete` as the orchestrator that drives
 the whole chain in a single invocation — in default `automatic` mode or
 in `interactive` mode with stage questions and confirmations.
+It also installs `dev-explore`, the separate question-to-documentation
+loop that generates Markdown or static HTML without application changes.
 
 This skill is the **installer**. It runs from the canonical source
-repository (this one) and copies the *other* nine skills into a target
+repository (this one) and copies the *other* ten skills into a target
 repo, wires up the `scratch/` workspace, and scaffolds or audits the
 target's repo-root `AGENTS.md`. It does **not** install itself into the
 target.
 
 ## The AGENTS.md contract
 
-The nine worker skills contain **no repository-specific knowledge**. They
+The ten worker skills contain **no repository-specific knowledge**. They
 are identical in every repo. Everything repo-specific — build commands, test
 commands and filter syntax, toolchain pins, code style, architectural
 invariants, commit trailers — lives in a single **`AGENTS.md` at the target
@@ -70,21 +72,25 @@ You are a **setup engineer**. That means:
 2. **`git_mode`** *(optional)* — `include` or `exclude`. See "Git Mode"
    below. If the user did not state it, **ask** before writing anything.
 
-3. **Canonical source** *(implicit)* — the nine sibling skill directories
+3. **Canonical source** *(implicit)* — the ten sibling skill directories
    next to this one, and the shared agent definitions beside them.
    Resolve:
    - `SKILLS_SOURCE` = the parent directory of this `dev-setup` skill
      directory (it contains `dev-request/`, `dev-report/`,
      `dev-approach/`, `dev-plan/`, `dev-do/`, `dev-review/`,
-     `dev-issue/`, `dev-pr-open/`, `dev-complete/`).
+     `dev-issue/`, `dev-pr-open/`, `dev-complete/`, `dev-explore/`).
    - `BASE_ROOT` = `git -C <SKILLS_SOURCE> rev-parse --show-toplevel` when
      that succeeds; otherwise `SKILLS_SOURCE` with a trailing
      `.github\skills` stripped.
    - `AGENTS_SOURCE` = `<BASE_ROOT>\.github\agents`.
    - `TEMPLATE` = `<BASE_ROOT>\templates\AGENTS.template.md`.
-   Confirm all nine source skill directories exist; stop if any are
+   Confirm all ten source skill directories exist; stop if any are
    missing. A missing `AGENTS_SOURCE` is **not** fatal — the skills fall
    back to built-in agents without it — so report it and continue.
+   Also confirm `dev-explore\assets\page.html`, `assets\theme.css`,
+   `assets\theme.js`, and `references\html-contract.md` exist beneath
+   its directory. These portable assets ship with the skill; they are
+   not optional target-repository dependencies.
    `dev-setup` itself is **never** copied into the target.
 
 ## Git Mode
@@ -154,12 +160,14 @@ ever hides what this skill installed:
 /.github/skills/dev-issue/
 /.github/skills/dev-pr-open/
 /.github/skills/dev-complete/
+/.github/skills/dev-explore/
 
 # Personal dev-* Copilot agents (local only; not for the shared repo)
 /.github/agents/dev-approach-author.md
 /.github/agents/dev-approach-judge.md
 /.github/agents/dev-change-reviewer.md
 /.github/agents/dev-eng-reviewer.md
+/.github/agents/dev-explore-reviewer.md
 /.github/agents/dev-implementer.md
 /.github/agents/dev-qa-reviewer.md
 /.github/agents/dev-stage-runner.md
@@ -200,7 +208,8 @@ they are meant to be tracked, and so are the agent definitions.
 
 2. **Resolve the canonical source.** Compute `SKILLS_SOURCE`, `BASE_ROOT`,
    `AGENTS_SOURCE`, and `TEMPLATE` as described under Inputs. Confirm the
-   nine skill directories exist. Note whether `AGENTS_SOURCE` exists —
+   ten skill directories and the required documentation assets exist.
+   Note whether `AGENTS_SOURCE` exists —
    step 4.2 branches on it, and an unresolved variable there would skip
    the agent copy while still reporting a clean install.
 
@@ -258,16 +267,18 @@ they are meant to be tracked, and so are the agent definitions.
      Never infer it from either, and never skip it because one of them was
      declined.
 
-4. **Copy the nine skills into the target (overwrite).** Copy each of the
-   nine `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
+4. **Copy the ten skills into the target (overwrite).** Copy each of the
+   ten `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
    replacing any existing copy. Do **not** copy `dev-setup`.
+   Copy recursively, including references and static documentation assets;
+   copying only `SKILL.md` leaves the HTML workflow unusable.
 
    ```powershell
    $skillsDir = Join-Path $TARGET '.github\skills'
    New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
    foreach ($s in 'dev-request','dev-report','dev-approach','dev-plan',
                   'dev-do','dev-review','dev-issue','dev-pr-open',
-                  'dev-complete') {
+                  'dev-complete','dev-explore') {
      Copy-Item -Recurse -Force (Join-Path $SKILLS_SOURCE $s) $skillsDir
    }
    ```
@@ -318,7 +329,7 @@ they are meant to be tracked, and so are the agent definitions.
    ```powershell
    foreach ($s in 'dev-request','dev-report','dev-approach','dev-plan',
                   'dev-do','dev-review','dev-issue','dev-pr-open',
-                  'dev-complete') {
+                  'dev-complete','dev-explore') {
      $raw = Get-Content (Join-Path $skillsDir "$s\SKILL.md") -Raw
      $d = [regex]::Match($raw, '(?m)^description:(.+)$').
             Groups[1].Value.Trim().Trim('"')
@@ -520,8 +531,12 @@ they are meant to be tracked, and so are the agent definitions.
      `AGENTS.md` without the user's go-ahead.
 
 9. **Verify.** Confirm and report pass/fail for each:
-   - All nine `SKILL.md` files are present under
+   - All ten `SKILL.md` files are present under
      `<TARGET>\.github\skills\`.
+   - Every file beneath each canonical worker directory is present at
+     the same relative path in the target and has the same content hash.
+     In particular, verify the three HTML assets and design reference
+     beneath `dev-explore`; a skill-file count alone is insufficient.
    - Every `dev-*.md` agent definition present in `AGENTS_SOURCE` is also
      present under `<TARGET>\.github\agents\`, and each one still parses:
      a `---` fenced YAML block carrying a `description`, and a `name` that
@@ -538,18 +553,21 @@ they are meant to be tracked, and so are the agent definitions.
      invisible.
    - The sentinel block exists exactly once, in the file the mode requires,
      and not in the other one.
-   - `exclude` mode: the ignore block **names all nine** skill directories,
+   - `exclude` mode: the ignore block **names all ten** skill directories,
      and `git -C <TARGET> check-ignore -q .github/skills/dev-do` and
      `... scratch` both exit 0. When agent definitions were installed, the
      block also names each of them, and
      `git -C <TARGET> check-ignore -q .github/agents/dev-stage-runner.md`
      exits 0.
+     Check every installed path, including the HTML assets and the
+     documentation reviewer, rather than treating these examples as
+     proxies for the complete installation.
    - `include` mode: `git -C <TARGET> check-ignore -q scratch` exits 0, and
      `... .github/skills/dev-do` exits non-zero (it must *not* be ignored).
      `... .github/agents/dev-stage-runner.md` must also exit non-zero.
    - `git -C <TARGET> status --porcelain` matches the mode: in `exclude`
      mode nothing new appears under `.github/skills/dev-*/`,
-     `.github/agents/dev-*.md`, or `scratch/`; in `include` mode the nine
+     `.github/agents/dev-*.md`, or `scratch/`; in `include` mode the ten
      skill directories and the agent definitions appear as untracked and
      ready to stage.
    - The `## GitHub Integration` sentinel block appears **exactly once** in
@@ -564,7 +582,7 @@ they are meant to be tracked, and so are the agent definitions.
      listed.
 
 10. **Report back.** State: the resolved `TARGET`; the git mode and which
-    file received the rules (plus any mode migration); the nine skills
+    file received the rules (plus any mode migration); the ten skills
     copied; the agent definitions copied, or that the canonical source had
     none, and each one's `tools:` result from step 4.6; the GitHub
     integration answer and every value recorded for it;
@@ -636,7 +654,7 @@ when `Enabled` is `no` there is no such row to disagree.
 - **Idempotent.** Re-running must not duplicate rules and must cleanly
   refresh the copied skills. The sentinel block is what makes that possible;
   always write it.
-- **Never copy `dev-setup` into the target.** Only the nine worker skills
+- **Never copy `dev-setup` into the target.** Only the ten worker skills
   and the `.github/agents/dev-*.md` definitions are installed.
   `dev-setup` lives solely in the canonical source.
 - **A description over 1024 characters makes a skill invisible.** The skill

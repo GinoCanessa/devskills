@@ -24,7 +24,11 @@ is optional when you drive the loop by hand, and mandatory inside a run.
 Its `automatic` mode answers stage questions for you; `interactive` brings
 them to you while still orchestrating every step.
 
-`dev-setup` is the installer that copies the other nine into a target repo.
+`dev-explore` is a separate documentation-only loop: questions become an
+evidence-linked Markdown document or a static HTML site. It uses slots,
+approaches, and review, but never enters the code/commit chain.
+
+`dev-setup` is the installer that copies the other ten into a target repo.
 
 ## The skills
 
@@ -39,9 +43,12 @@ them to you while still orchestrating every step.
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
 | `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
 | `dev-complete` | Orchestrator | a slot + a kind + content + optional mode | *nothing of its own; drives the skills that write* |
+| `dev-explore` | Researcher + documentation editor | a slot + a format + questions | exploration artifacts + Markdown or static HTML |
 | `dev-setup` | Setup engineer | a target repo | installed skills + agents + `AGENTS.md` |
 
-Everything except `dev-do`'s commits lands in `scratch/`, which is ignored.
+Local working artifacts live in `scratch/`, which is ignored.
+`dev-explore` also defaults its deliverable there, but accepts an explicit
+documentation output directory.
 `dev-do` commits locally and **never pushes or opens a PR** — `dev-pr-open`
 is the only skill permitted to do either.
 
@@ -53,7 +60,7 @@ the file for you to edit yourself.
 
 ## The AGENTS.md contract
 
-The nine worker skills carry **no repository-specific knowledge**. They are
+The ten worker skills carry **no repository-specific knowledge**. They are
 byte-identical in every repo they are installed into.
 
 Everything repo-specific — build commands, test commands and filter syntax,
@@ -88,8 +95,9 @@ dev-setup C:\ai\git\some-repo
    as drafts.
 3. Ask which **subagent model policy** to record (default: `tiered`) — see
    below.
-4. Copy the nine worker skills into `<target>/.github/skills/`, and the
-   shared agent definitions into `<target>/.github/agents/`.
+4. Copy the ten worker skills, including their supporting assets, into
+   `<target>/.github/skills/`, and the shared agent definitions into
+   `<target>/.github/agents/`.
 5. Write ignore rules into a sentinel block — `.git/info/exclude` when
    excluded, `.gitignore` when included.
 6. Create `<target>/scratch/`.
@@ -125,6 +133,7 @@ accident.
 | Path | Contents |
 |-|-|
 | `.github/skills/dev-*/` | The canonical skills. Editing these is how you change every repo. |
+| `.github/skills/dev-explore/assets/` | Portable static HTML starter, palette styles, and theme selection. |
 | `.github/agents/dev-*.md` | Shared named sub-agent roles, installed alongside the skills. |
 | `templates/AGENTS.template.md` | The `AGENTS.md` skeleton `dev-setup` fills in for a target. |
 | `AGENTS.md` | Conventions for agents working on *this* repo. |
@@ -191,6 +200,71 @@ issues as the branch accumulated, and closing all of them on merge.
 `dev-issue` and `dev-pr-open` do nothing unless the GitHub integration is
 enabled — see below.
 
+## Documentation-only exploration
+
+Use `dev-explore` to answer questions and produce documentation, without
+changing application code or creating commits:
+
+```text
+dev-explore 3 md "Explain configuration precedence"
+dev-explore 4 html "Document the import pipeline" palette: blue
+dev-explore 4 html output: docs\import-guide mode: interactive
+dev-explore C:\repo\scratch\1005-04
+```
+
+The required format is `markdown` (alias `md`) or `html`. A numeric slot
+uses today's date; a full slot-directory path resumes another day's work.
+Content is required only for a new slot. The default entry point is
+`<slot>\output\README.md` or `<slot>\output\index.html`. An explicit
+`output` must be a dedicated documentation directory, initially empty
+or already owned by that exploration. Existing manual edits are protected.
+
+The loop captures `request.md`, compares three documentation shapes in
+`approaches.md`, records research in `sources.md`, plans pages in
+`outline.md`, renders, and records independent review in `review.md`.
+These are not implementation artifacts: exploration slots are kept
+separate, carry no issue binding, and never call the publishing skills.
+The request holds resumable state, decisions, budgets, and a file manifest.
+
+**Automatic by default**, it resolves preferences as recorded assumptions
+and keeps factual unknowns visible. `mode: interactive` asks focused
+questions and confirms the approach and outline before rendering. Both
+modes stop for missing access, unsafe writes, or unresolved blockers.
+Omitting `mode` on resume means `automatic`, as with `dev-complete`.
+
+| Option | Default | Purpose |
+|-|-|-|
+| `palette` | `green` | HTML presets: `green`, `blue`, `purple`, `amber`, `rose` |
+| `max_subagents` | `3` | Concurrent children, from `1` to `8` |
+| `max_total_subagents` | `8` | Total child invocations across resumes, from `1` to `32` |
+| `review_iterations` | `1` | Fix-and-recheck cycles after the initial review, from `0` to `5` |
+| `model_policy` | `inherit` | Use `AGENTS.md`, or explicitly select `uniform` / `tiered` for this run |
+| `reasoning_model` | session configuration | Explicit child-model selection; all children under `uniform`, reviewers under `tiered` |
+| `mechanical_model` | recorded mechanical tier | Override discovery's model under `tiered` only |
+
+Model overrides never change the already-running caller or rewrite
+`AGENTS.md`. Unavailable models and incompatible options are rejected.
+`review_iterations: 0` still records the initial review; it disables fixes,
+not review. Capture, approach comparison, and rendering stay in-process.
+Only sizeable, independent discovery work fans out, and one read-only
+documentation reviewer checks the result. Budgets count retries and
+rechecks too; a resume does not reset them.
+
+**HTML has a settled visual system:** a pale canvas, white rounded cards,
+left navigation, generous typography, and a deep colored hero, paired
+with charcoal surfaces and lighter accents in dark mode. Every page has
+a labelled **System / Light / Dark** selector, with a persistent per-site
+choice. Green is the default; the other presets change accents and hero
+colors without changing semantic warnings. The starter lives alongside
+the skill, so it does not depend on another repository.
+
+Sites contain their content directly in HTML and use local assets and
+relative links. No generator, server routes, runtime content fetch, CDN,
+or install step is required. Without scripting, reading and navigation
+still work and the theme follows the system. Theme selection remains
+usable when storage is unavailable, with an explicit persistence warning.
+Output is ready to serve statically, but **nothing is deployed**.
+
 ## Sub-agent roles and cost
 
 The loop delegates, and delegation is what it spends. A single
@@ -200,7 +274,7 @@ careless one is large.
 
 Three mechanisms keep it in check.
 
-**Named agents.** `.github/agents/` holds seven role definitions that
+**Named agents.** `.github/agents/` holds eight role definitions that
 `dev-setup` installs alongside the skills:
 
 | Agent | Used by | Notable |
@@ -212,6 +286,7 @@ Three mechanisms keep it in check.
 | `dev-change-reviewer` | `dev-review` | Both passes in one context, for a below-threshold scope; no edit tool |
 | `dev-implementer` | `dev-do` | Writes a phase's code; never commits, stages, or edits the plan |
 | `dev-stage-runner` | `dev-complete` | Runs one stage; full toolset |
+| `dev-explore-reviewer` | `dev-explore` | Reviews answers, sources, and documentation delivery; no edit tool |
 
 Each carries its own role brief, so dispatching it is shorter than
 prompting a general-purpose agent into the same shape — and each is

@@ -146,6 +146,11 @@ These are decisions, not preferences. Violating one is a review Blocker.
   is (if any). Examples of the shape: allowed dependency direction between
   projects, serialization strategy, where committed assets live, what the
   process may and may not do at startup.}
+- **Documentation exploration stays documentation-only.** `dev-explore`
+  may write its own slot artifacts and manifest-listed documentation
+  output, never application code, dependencies, configuration, or git
+  history. Static HTML assets are part of the documentation deliverable.
+  Exploration and implementation slots are separate.
 
 ---
 
@@ -229,6 +234,25 @@ scratch/<MMDD>-<##>/
   analysis.md          # authored by dev-review
 ```
 
+Use a **separate exploration slot** for `dev-explore`:
+
+```text
+scratch\<MMDD>-<##>\
+  request.md           # Workflow: dev-explore; options, state, manifest
+  approaches.md        # competing documentation shapes and selection
+  sources.md           # source inventory and evidence map
+  outline.md           # pages, sections, and question coverage
+  review.md            # review of the current deliverable
+  output\              # default generated documentation directory
+    README.md          # Markdown entry, or index.html for HTML
+```
+
+`dev-explore` owns these artifacts, never calls the implementation or
+publishing loop, and never commits. `output` may explicitly name a
+dedicated documentation directory outside scratch; it must be empty or
+already owned by that exploration. Existing manual edits are protected.
+An exploration carries no `Issue` binding.
+
 - `<MMDD>` is the local date (zero-padded month + day); `<##>` is a
   zero-padded two-digit slot number.
 - `scratch/` is **ignored** ({TBD: `/scratch` in `.gitignore` /
@@ -245,6 +269,10 @@ scratch/<MMDD>-<##>/
   invent a command.** If something you need is not documented here, say so
   rather than guessing.
 - Subagents follow the **subagent model policy** recorded below.
+- `dev-explore` defaults to automatic decisions and uses the same model
+  policy. Explicit per-run model selections do not rewrite this file.
+  Its concurrency and total-child budgets include rechecks and retries;
+  resuming does not reset cumulative spend.
 - Do not add new linting, building, or testing tooling without being asked.
 - Prefer the smallest targeted verification that covers the change; escalate
   to the full suite only when the targeted run indicates it is needed.
