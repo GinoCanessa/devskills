@@ -40,7 +40,7 @@ approaches, and review, but never enters the code/commit chain.
 | `dev-plan` | Staff-level Eng Lead | a request or report | `scratch/<MMDD>-<##>/plan.md` |
 | `dev-do` | Staff-level Engineer | `plan.md` | source code + local commits |
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
-| `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan | a GitHub issue + the slot's `Issue` row |
+| `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan + ownership receipts | a GitHub issue + managed plan comment + the slot's `Issue` rows + private receipts |
 | `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
 | `dev-complete` | Orchestrator | a slot + a kind + content + optional mode | *nothing of its own; drives the skills that write* |
 | `dev-explore` | Researcher + documentation editor | a slot + a format + questions | exploration artifacts + Markdown or static HTML |
@@ -329,15 +329,58 @@ drafts. Nothing about your repository lives in a skill.
 When it is on:
 
 - `dev-issue` publishes a `featurerequest.md` or `bugreport.md` as a GitHub
-  issue, keeps it in sync as you refine the artifact, and can attach a
-  finalized `plan.md` as a single managed comment. It writes an `Issue` row
-  into the slot's artifacts, which every later skill carries forward.
+  issue and can refresh unchanged, tool-owned content using private
+  ownership receipts. A finalized `plan.md` stays in a separate managed
+  comment with its own receipt. It writes an `Issue` row into the slot's
+  artifacts, which every later skill carries forward.
 - `dev-do` adds an `Issue: #N` trailer to its phase commits.
 - `dev-pr-open` pushes the branch, adds a changelog entry per change when
   the repo has a changelog, and opens a PR that references every bound
   issue in scope so merging closes them all.
 
-Guardrails worth knowing: every write is confirmed with you in the moment,
+Guardrails worth knowing: every GitHub write is confirmed in the moment,
 `analysis.md` and `approach*.md` are **never** published, the recorded
 repository is cross-checked against `origin` before any write, and
 `dev-pr-open` refuses to run when `HEAD` is the default branch.
+
+**Issue ownership is whole-document, or refusal.** A binding or marker
+identifies a candidate; it does not authorize replacement. An unchanged
+issue proven tool-created by its receipt can be refreshed after approval
+of the complete title/body diff. A seeded human issue or unproven legacy
+issue refuses that refresh, even if it resembles the local source. Any
+human title edit, paragraph, footer, marker, or whitespace change from the
+saved baseline blocks the entire update. Human additions are preserved by
+stopping, not by merging regions or offering adoption. Every bound `#N`
+survives a refusal.
+
+The separate plan comment follows the same provenance, exact-baseline,
+approval, and verification rules. A marker alone, multiple marked
+comments, or a missing or changed recorded comment causes refusal, never
+a replacement or duplicate create. When neither a managed comment nor
+its receipt exists, a separately approved new plan comment is allowed,
+including on a seeded issue without adopting its title/body.
+
+**Receipts are local operational evidence.** `dev-issue` writes version-1
+UTF-8 JSON as `issue-<N>.json` and `plan-<N>.json` beneath the private
+directory resolved by:
+
+```powershell
+git rev-parse --path-format=absolute --git-path devskills/dev-issue/
+```
+
+These are runtime writes in Git metadata, not tracked configuration or
+new slot artifacts. Source binding and back-fill come before receipt
+creation; only verified identity and exact approved content can establish
+or advance ownership. Missing, corrupt, conflicting, or unsupported
+receipts grant no overwrite authority. A failed receipt write retains
+prior evidence and stops; it does not retry the remote write. Receipts do
+not travel with a clone or push. Another machine or worktree, lost local
+metadata, or a crash before recording can therefore prevent refresh.
+Current remote content cannot be copied into a receipt to bypass refusal.
+
+**Approval is not a transaction.** The publisher checks the full baseline,
+freezes the approved payload, re-fetches immediately before writing, and
+verifies identity/content afterward before advancing a receipt. Observed
+drift invalidates approval; uncertain writes or mismatched read-back stop
+without a blind retry. A final read/write race remains: even a matching
+read-back cannot prove that an intervening human edit was never lost.
