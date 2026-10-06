@@ -129,7 +129,7 @@ before any commit, any push, and any GitHub call that writes.
    (strip the leading `origin/`), and, on failure:
 
    ```powershell
-   gh repo view --repo <owner/repo> --json defaultBranchRef `
+   gh repo view <owner/repo> --json defaultBranchRef `
      -q .defaultBranchRef.name
    ```
 
@@ -438,9 +438,13 @@ call.**
   was already committed by `dev-do`.
 - **Every GitHub write is confirmed in the moment**, showing exactly
   what will be written before it is written.
-- **Never a bare `gh` write.** Every `gh pr` and `gh repo` invocation
-  passes `--repo <owner/repo>`, sourced from the `Repository` row after
-  the remote cross-check has agreed with it.
+- **Never a bare `gh` write.** Use command-specific explicit targets:
+  `gh repo view <owner/repo>` takes a positional repository; applicable
+  `gh issue`, `gh pr`, and `gh label` commands pass
+  `--repo <owner/repo>`; every `gh api` invocation carries
+  `repos/<owner>/<repo>/...` in its endpoint. Take every target from the
+  `Repository` row after the remote cross-check has agreed with it.
+  Never retry against an implicit repository.
 - **Report the pull request URL** and state exactly what was pushed —
   which branch, which commits, which slots and issues they covered, and
   whether a changelog commit was added.

@@ -453,8 +453,10 @@ they are meant to be tracked, and so are the agent definitions.
      `https://<host>/<owner>/<repo>` with an optional `.git` suffix, and
      **confirm the parsed value with the user** before recording it. Do
      **not** use a bare `gh repo view` for this: inside a fork it resolves
-     to the *upstream*, which is the exact hazard `--repo` exists to prevent
-     everywhere else.
+     to the *upstream*. Use the explicit target syntax each subcommand
+     supports: `gh repo view <owner/repo>` takes a positional repository;
+     applicable issue, PR, and label commands use `--repo <owner/repo>`;
+     `gh api` uses `repos/<owner>/<repo>/...` in its endpoint.
    - **Label mapping.** This step is the **sole home of the stock-label
      defaults**. `dev-setup` is exempt from the repo-agnostic rule that
      binds the worker skills, so it may carry an opening proposal:

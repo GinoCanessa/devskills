@@ -95,7 +95,7 @@ in exactly this order. Every failure below writes nothing.
    worst failure this skill can produce.
 
 4. **The agreed value resolves.** Confirm with
-   `gh repo view --repo <owner/repo> --json nameWithOwner`. A failure
+   `gh repo view <owner/repo> --json nameWithOwner`. A failure
    here is a stop, not a prompt to try something else.
 
 ## Terminal-Status Gate
@@ -350,10 +350,13 @@ verbatim** — it is deliberately not duplicated there.
   opening a PR belong to `dev-pr-open`.
 - **Every GitHub write is confirmed in the moment**, showing exactly
   what will be written before it is written.
-- **Never a bare `gh` write.** Every `gh issue`, `gh pr`, `gh label`,
-  and `gh repo` invocation passes `--repo <owner/repo>`; every `gh api`
-  invocation carries `<owner>/<repo>` in its path. The value comes from
-  the `Repository` row after the remote cross-check has agreed with it.
+- **Never a bare `gh` write.** Use command-specific explicit targets:
+  `gh repo view <owner/repo>` takes a positional repository; applicable
+  `gh issue`, `gh pr`, and `gh label` commands pass
+  `--repo <owner/repo>`; every `gh api` invocation carries
+  `repos/<owner>/<repo>/...` in its endpoint. Take every target from the
+  `Repository` row after the remote cross-check has agreed with it.
+  Never retry against an implicit repository.
 - **Honor repo conventions.** Repository conventions live in
   `AGENTS.md`. If it is absent, fall back to `README.md` /
   `CONTRIBUTING.md` and state which source you used — but note that an
