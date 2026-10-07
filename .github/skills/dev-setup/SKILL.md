@@ -91,6 +91,9 @@ You are a **setup engineer**. That means:
    `assets\theme.js`, and `references\html-contract.md` exist beneath
    its directory. These portable assets ship with the skill; they are
    not optional target-repository dependencies.
+   Require `dev-plan\references\handoff-contract.md` beneath
+   `SKILLS_SOURCE` too. This shared reference is a required support file,
+   not an additional skill or permission to activate a worker contract.
    `dev-setup` itself is **never** copied into the target.
 
 ## Git Mode
@@ -209,6 +212,10 @@ they are meant to be tracked, and so are the agent definitions.
 2. **Resolve the canonical source.** Compute `SKILLS_SOURCE`, `BASE_ROOT`,
    `AGENTS_SOURCE`, and `TEMPLATE` as described under Inputs. Confirm the
    ten skill directories and the required documentation assets exist.
+   Also require
+   `<SKILLS_SOURCE>\dev-plan\references\handoff-contract.md`; stop and
+   name the missing path if it is absent. Do not let enumeration of an
+   incomplete source turn a missing required support file into a pass.
    Note whether `AGENTS_SOURCE` exists —
    step 4.2 branches on it, and an unresolved variable there would skip
    the agent copy while still reporting a clean install.
@@ -271,7 +278,10 @@ they are meant to be tracked, and so are the agent definitions.
    ten `SKILLS_SOURCE\dev-*` directories into `<TARGET>\.github\skills\`,
    replacing any existing copy. Do **not** copy `dev-setup`.
    Copy recursively, including references and static documentation assets;
-   copying only `SKILL.md` leaves the HTML workflow unusable.
+   copying only `SKILL.md` leaves the HTML workflow unusable and drops
+   the shared handoff contract. Preserve
+   `dev-plan\references\handoff-contract.md` at that same relative path;
+   it travels with `dev-plan`, without changing the ten-worker count.
 
    ```powershell
    $skillsDir = Join-Path $TARGET '.github\skills'
@@ -536,9 +546,14 @@ they are meant to be tracked, and so are the agent definitions.
    - All ten `SKILL.md` files are present under
      `<TARGET>\.github\skills\`.
    - Every file beneath each canonical worker directory is present at
-     the same relative path in the target and has the same content hash.
+     the same relative path in the target and has the same SHA-256 hash.
      In particular, verify the three HTML assets and design reference
-     beneath `dev-explore`; a skill-file count alone is insufficient.
+     beneath `dev-explore`, and require
+     `.github/skills/dev-plan/references/handoff-contract.md`.
+     Report every support file's relative path and source/target hashes;
+     a missing file, path mismatch, or hash mismatch fails verification.
+     A skill-file count alone is insufficient. Apply this check on
+     refreshes and in both git modes, including ignored support files.
    - Every `dev-*.md` agent definition present in `AGENTS_SOURCE` is also
      present under `<TARGET>\.github\agents\`, and each one still parses:
      a `---` fenced YAML block carrying a `description`, and a `name` that
