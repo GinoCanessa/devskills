@@ -41,7 +41,7 @@ approaches, and review, but never enters the code/commit chain.
 | `dev-do` | Staff-level Engineer | `plan.md` | source code + local commits |
 | `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan + ownership receipts | a GitHub issue + managed plan comment + the slot's `Issue` rows + private receipts |
-| `dev-pr-open` *(opt-in)* | Release engineer | a slot's commits, or every local commit | a pushed branch, a PR, changelog entries |
+| `dev-pr-open` *(opt-in)* | Release engineer | the complete branch range, an optional matching plan, and changelog receipts | a pushed branch, a PR, one approved changelog-only commit when needed, and private receipts |
 | `dev-complete` | Orchestrator | a slot + a kind + content + optional mode | *nothing of its own; drives the skills that write* |
 | `dev-explore` | Researcher + documentation editor | a slot + a format + questions | exploration artifacts + Markdown or static HTML |
 | `dev-setup` | Setup engineer | a target repo | installed skills + agents + `AGENTS.md` |
@@ -154,7 +154,7 @@ dev-plan 1
 dev-issue 1          # optional: attach the finished plan as a comment
 dev-do 1
 dev-review 1
-dev-pr-open 1        # push the branch, open the PR
+dev-pr-open 1        # only when the slot matches the branch's work
 ```
 
 `1` is a slot number; it expands to `scratch/<MMDD>-01/` using today's date.
@@ -193,9 +193,21 @@ budgets. Omitting `mode` always means `automatic`, even on resume.
 Interactive mode does not add per-phase checkpoints; use `dev-do`'s
 `checkpoint_every` input in the unchanged hand-driven loop for those.
 
-`dev-pr-open` is the exception: given no slot it publishes **every local
-commit ahead of the default branch**, spanning as many slots, requests, and
-issues as the branch accumulated, and closing all of them on merge.
+`dev-pr-open` accepts a named slot only when its nonempty, normalized
+`COMMIT` set exactly matches the captured branch work, apart from
+receipt-proven publisher changelog commits that remain visible separately.
+An empty or stale plan, or slot A on a branch containing A+B, refuses
+before changelog edits or push. Slot mode is **not a subset selector**.
+Choose a separate explicit branch-mode invocation and review all work,
+or prepare a matching branch yourself; the skill never does that for you.
+
+Given no slot, `dev-pr-open` publishes **every commit in the captured
+range ahead of the default branch**, including merges, unmatched work,
+and publisher commits, even if already pushed. It does not use an
+upstream-tracking range. The preview, PR body, and report describe that
+same inventory, with partial slot matches and trailer-only associations
+labelled rather than presented as whole-plan provenance. Each distinct
+bound issue gets its own closing reference.
 
 `dev-issue` and `dev-pr-open` do nothing unless the GitHub integration is
 enabled — see below.
@@ -334,14 +346,42 @@ When it is on:
   comment with its own receipt. It writes an `Issue` row into the slot's
   artifacts, which every later skill carries forward.
 - `dev-do` adds an `Issue: #N` trailer to its phase commits.
-- `dev-pr-open` pushes the branch, adds a changelog entry per change when
-  the repo has a changelog, and opens a PR that references every bound
+- `dev-pr-open` reconciles the complete branch range, prepares any
+  missing changelog entries, and approves scope and PR content before
+  pushing. A separately approved PR create/update references every bound
   issue in scope so merging closes them all.
 
 Guardrails worth knowing: every GitHub write is confirmed in the moment,
 `analysis.md` and `approach*.md` are **never** published, the recorded
 repository is cross-checked against `origin` before any write, and
-`dev-pr-open` refuses to run when `HEAD` is the default branch.
+`dev-pr-open` refuses detached `HEAD` or the default branch. It validates
+an existing PR's actual base/head repositories and branches **before**
+changelog work or push. A wrong-base, wrong-head, or ambiguous PR is a
+refusal, never an automatic retarget.
+
+**Changelog approval covers the complete commit.** Before editing,
+`dev-pr-open` enumerates the exact file or new fragment names. Tracked
+targets must match HEAD in index and worktree; new targets must be
+absent. Dirty tracked files, existing untracked content, ignored paths,
+collisions, non-regular files, path escapes, and symlink/junction or
+reparse-point ancestors refuse without stash, discard, adoption, or a
+renamed workaround. Unrelated directory siblings remain untouched.
+
+Every exact target is explicitly staged, including a new single-file
+changelog and new fragments, never a whole directory. Approval shows
+the entire staged patch, including new content, modes, deletions, and
+formatting, plus the full message and trailers. Immediate pre-commit
+rechecks and post-commit parent/tree/paths/message proof must match that
+approval before push is possible. A declined approval or interruption
+can leave staged drafts; a failed proof can leave a local commit.
+Neither is automatically reset, unstaged, amended, or compensated.
+
+Duplicate suppression reads anchors only from committed content at the
+captured head, not dirty or untracked text. When all anchors are covered,
+or the changelog setting is `none`, no new changelog commit is made.
+Prior receipt-proven publisher commits still appear in the full range,
+PR description, and report; they are excluded only from work attribution
+and new-entry candidates.
 
 **Issue ownership is whole-document, or refusal.** A binding or marker
 identifies a candidate; it does not authorize replacement. An unchanged
@@ -378,9 +418,45 @@ not travel with a clone or push. Another machine or worktree, lost local
 metadata, or a crash before recording can therefore prevent refresh.
 Current remote content cannot be copied into a receipt to bypass refusal.
 
-**Approval is not a transaction.** The publisher checks the full baseline,
-freezes the approved payload, re-fetches immediately before writing, and
-verifies identity/content afterward before advancing a receipt. Observed
-drift invalidates approval; uncertain writes or mismatched read-back stop
-without a blind retry. A final read/write race remains: even a matching
-read-back cannot prove that an intervening human edit was never lost.
+`dev-pr-open` owns separate version-1 UTF-8 JSON records named
+`changelog-<parent-OID>-<tree-OID>.json` beneath:
+
+```powershell
+git rev-parse --path-format=absolute --git-path devskills/dev-pr-open/
+```
+
+These private runtime records add no setting or slot artifact. A
+`pending` record is stored only after complete patch/message approval
+and before the commit. Exact parent, tree, paths, message, repository,
+and saved target/work/anchor evidence must verify before that same record
+becomes `complete` with the commit OID. Atomic replacement preserves prior
+evidence on failure and stops before push. An interrupted pending record
+can complete only for one uniquely matching commit, never by subject.
+
+PR receipts have the same local-only persistence limits as issue receipts.
+Missing or invalid evidence never grants bookkeeping status; a receipt-less
+changelog-looking commit remains visible work and cannot silently pass a
+mismatching slot. Saved targets, rather than today's configuration, prove
+earlier commits even when no new entry is needed. Failed recovery retains
+evidence and stops; the next run still needs a clean index and targets.
+
+**Approval is not a transaction.** The issue publisher checks the full
+baseline, freezes the approved payload, and re-fetches immediately before
+writing. It verifies identity/content afterward before advancing a
+receipt. Observed drift invalidates approval; uncertain writes or
+mismatched read-back stop without a blind retry. A final read/write race
+remains: even a matching read-back cannot prove that an intervening human
+edit was never lost.
+
+The PR publisher revalidates the repository, current branch, head,
+freshly fetched base, and existing PR identity before the first changelog
+edit and again before push. After the one verified changelog advance,
+approval covers the complete range, exact PR content, and proposed push.
+The push pins that approved head OID to the captured current branch with
+an ordinary non-force refspec; it does not configure an upstream.
+Pushing can already update an existing PR, so content review comes first.
+The later PR write needs separate approval, remote head/base and identity
+revalidation immediately before it, and exact identity/content read-back.
+Drift, a new or vanished PR, or an uncertain result stops without a
+second PR or automatic repair. These checks do not eliminate the final
+read/write race or make Git and GitHub one atomic transaction.
