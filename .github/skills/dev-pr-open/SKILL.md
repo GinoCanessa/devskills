@@ -1,6 +1,6 @@
 ---
 name: dev-pr-open
-description: "Publishes committed work on the current branch as a pull request, in the role of a release engineer. USE FOR: explicitly pushing the branch, approving the complete PR title/body, adding one fully approved changelog-only commit when needed, and referencing bound issues. A named slot's plan commits must exactly match the captured branch work; receipt-proven publisher commits remain visible separately. With no slot, branch mode publishes the complete default-base/head range, including unmatched work. Accepts a full path to `plan.md` or a numeric slot. Opt-in: requires `AGENTS.md` GitHub Integration with `Enabled: yes`. The only skill permitted to push or open a PR; never force-pushes, rewrites branches, or edits slot artifacts. Changelog, push, and PR-write approvals are separate."
+description: "Publishes committed work on the current branch as a pull request, in the role of a release engineer. USE FOR: explicitly pushing the branch, approving the complete PR title/body, adding one fully approved changelog-only commit when needed, and referencing bound issues. A named slot's plan commits must exactly match the captured branch work; receipt-proven publisher commits remain visible separately. With no slot, branch mode publishes the complete default-base/head range, including unmatched work. Both modes require verified non-shallow history. Accepts a full path to `plan.md` or a numeric slot. Opt-in: requires `AGENTS.md` GitHub Integration with `Enabled: yes`. The only skill permitted to push or open a PR; never force-pushes, rewrites branches, or edits slot artifacts. Changelog, push, and PR-write approvals are separate."
 ---
 
 # Dev PR Open Skill
@@ -18,6 +18,11 @@ written against both:
 - **Branch mode** — publish every commit in the captured range ahead
   of the default branch, regardless of slot provenance. This is the
   default when the user names no slot.
+
+**Both modes require complete, verified non-shallow history.** Pass the
+history gate in *Preconditions* and complete every required history
+traversal before trusting a scope. An apparently matching local range
+in a shallow checkout is not proof.
 
 **Neither mode publishes an arbitrary subset of a branch.** Capture one
 inventory and use it for scope previews, approvals, PR content, and the
@@ -97,7 +102,7 @@ guess a default, and do not write `AGENTS.md`.
 
 Run this gate in exactly this order, before changelog edits, staging,
 commits, receipt writes, pushes, or GitHub writes. Read-only range
-capture below supplies step 6; defer pending-receipt completion until
+capture below supplies step 7; defer pending-receipt completion until
 these gates pass. Configuration recording remains confined to the
 shared protocol.
 
@@ -154,12 +159,33 @@ shared protocol.
    frequently pile up on the default branch — so say it plainly rather
    than leaving a dead end.
 
-6. **Hard fail — no commits in scope.** If captured `R` below is empty,
+6. **Hard fail — incomplete or unverified history.** Run:
+
+   ```powershell
+   git rev-parse --is-shallow-repository
+   ```
+
+   Require exit 0 and the single boolean value `false`. A `true`
+   result, a nonzero exit even with apparent `false` output, empty or
+   unexpected output, or an unavailable check is a hard stop. Report
+   the observed result, exit status, and error; unknown is not proof
+   of non-shallow history.
+
+   This gate is unconditional in both modes, even with `Changelog file`
+   set to `none`, committed anchors covering every candidate, existing
+   publisher receipts, or an already-remote head whose push would be a
+   no-op. Refuse every shallow repository, even if its boundary seems
+   unrelated to the intended range. Never deepen or unshallow history,
+   manipulate shallow metadata, rewrite branches, switch modes, or
+   ask for approval to bypass missing proof. Require the operator to
+   supply a complete-history checkout and re-invoke independently.
+
+7. **Hard fail — no commits in scope.** If captured `R` below is empty,
    there is nothing to open a pull request for. Stop and say so. An empty
    slot record set also stops under the separate slot-equality gate;
    it never selects branch mode.
 
-7. **Warn and ask — uncommitted work in scope.** Apply the existing
+8. **Warn and ask — uncommitted work in scope.** Apply the existing
    dirtiness domain for the selected mode:
    - **Slot mode** — the plan's owned paths, reusing `dev-do`'s
      standard: every literal owned path of every phase, tracked and
@@ -188,8 +214,8 @@ authority to publish a different branch range.
 
 ### Capture the range and existing PR
 
-After the integration, authentication, remote, index, and branch gates,
-verify the repository's immutable ID and `full_name` with:
+After the integration, authentication, remote, index, branch, and
+history gates, verify the repository's immutable ID and `full_name` with:
 
 ```powershell
 gh api repos/<owner>/<repo>
@@ -206,9 +232,16 @@ git fetch origin `
 ```
 
 If fetching fails, stop and report it. It updates remote-tracking refs,
-not tracked work. Capture the default base name and its fetched full
-OID, and the full `HEAD` OID. Use Git's repository object format, never
-an assumed OID length.
+not tracked work. Repeat the complete-history gate from *Preconditions*
+after this fetch, before deriving or trusting the inventory. Capture
+the default base name and its fetched full OID, and the full `HEAD` OID.
+Use Git's repository object format, never an assumed OID length.
+
+Fetching only the base and resolving both endpoint OIDs do not prove
+complete feature ancestry. Require every necessary history traversal to
+complete successfully. A failed or incomplete traversal stops with its
+diagnostic; partial output is neither an inventory nor proof that no
+commits are in scope.
 
 **Validate an existing PR now, before changelog work or push.** List all
 pages of open PRs and find candidates for the captured head branch:
@@ -234,6 +267,10 @@ closed, missing, or retargeted PR cannot quietly select another operation.
 
 ### One publication inventory
 
+Require the complete-history gate and complete, successful required
+history traversals before defining or relying on these sets in either
+mode:
+
 - **`R`** is every commit in captured `base-OID..head-OID`, including
   merges and publisher commits. Do not apply first-parent, no-merges,
   subject, or path filters.
@@ -250,7 +287,8 @@ described in the PR, or reported.**
 
 ### Slot equality
 
-In slot mode, apply every check before editing:
+In slot mode, first require the complete-history gate and successful
+required traversals above; then apply every check before editing:
 
 1. Read the named plan's `## Progress Log` and parse **every `COMMIT`
    entry**. Ignore only `PENDING` and `NOTE`; neither authorizes work.
@@ -287,8 +325,10 @@ and new review of all work, or a matching branch the user prepares.
 Never create, switch, cherry-pick, rebase, or rewrite a branch or plan to
 make the equality pass.
 
-**Branch mode takes all of `R` as authority**, with best-effort
-discovery below; it does not need a slot to authorize any commit.
+**Branch mode takes all of `R` as authority** only after the same
+history prerequisite, with best-effort discovery below; it does not
+need a slot to authorize any commit. Switching modes cannot bypass the
+history gate.
 
 **Echo the same complete inventory before changelog work.** Show the
 repository, mode, current branch, base name/OID, head OID, and existing
@@ -300,8 +340,9 @@ work. Groups explain this list; they never filter it.
 ## Slot Discovery (branch mode)
 
 Branch mode has no single plan handed to it, so it finds the slots that
-produced its commits rather than assuming there is one. Once the commit
-list is resolved:
+produced its commits rather than assuming there is one. Use only the
+inventory authorized by the complete-history gate and successful
+required traversals. Once the complete commit list is resolved:
 
 1. Find candidate slots cheaply: search `scratch/*/plan.md` for work
    SHA prefixes and open only the files that hit. Prefix search locates
@@ -423,11 +464,14 @@ the immediate pre-commit checks, never as a speculative draft.
 2. For an interrupted pending receipt for this repository/branch,
    inspect all candidate commits in captured `R`. Complete it only if
    **exactly one** matches those same identities and saved evidence.
-   After all preconditions pass, atomically complete the existing record
-   with that OID, then classify it in `L`. Zero or multiple matches
-   stops with evidence retained; never choose the newest or create a
-   replacement commit. Pending recovery is required even with no new
-   entry to write.
+   After all preconditions pass, repeat the complete-history gate
+   immediately before the recovery write. Failure invalidates
+   authorization and stops without advancing the receipt, even if all
+   captured OIDs are unchanged. Only on success, atomically complete the
+   existing record with that OID, then classify it in `L`. Zero or
+   multiple matches stops with evidence retained; never choose the
+   newest or create a replacement commit. Pending recovery is required
+   even with no new entry to write.
 3. Missing evidence grants no exception: an unverified changelog-looking
    commit remains visible work in `W`, so it cannot silently pass slot
    equality. Report invalid, unsupported, corrupt, identity-mismatched,
@@ -450,6 +494,9 @@ At each boundary named below, compare against the captured snapshot;
   Only the verified changelog commit below may advance that head.
 - Fetch the same resolved default ref with the explicit fetch above.
   Require its full OID to equal captured base; a failed fetch stops.
+- Repeat the complete-history gate from *Preconditions* after that
+  fetch. Shallow or unverifiable history invalidates authorization even
+  when repository, branch, base, and head identities are unchanged.
 - Rediscover all open PR candidates and re-read any recorded PR. Require
   the same identity or absence, base/head repository and branch
   identities, and base OID. Before push, require the saved remote PR
@@ -459,9 +506,11 @@ At each boundary named below, compare against the captured snapshot;
 - Recheck the exact approved content at the approval boundary in
   question. Never substitute a fresh rendering after approval.
 
-Any failed read or observed drift stops before the next side effect.
-Report the differing fields and effects already made; never retarget,
-widen scope, or silently re-approve. These checks detect observed drift,
+Any failed read, incomplete required history traversal, or observed
+drift stops before the next side effect and invalidates authorization.
+Report the differing fields or history result/error and effects already
+made; never retarget, widen scope, recapture a smaller range, or silently
+re-approve. Do not claim rollback. These checks detect observed drift,
 not an atomic Git/GitHub transaction. The final read/write race remains,
 and even matching read-back cannot prove no intervening edit was lost.
 
@@ -481,7 +530,7 @@ None of these is a value. Each is a candidate the protocol proposes,
 confirms, and records; a repository that keeps its changelog elsewhere
 answers with its own path. A recorded value of `none` is final and never
 re-asked. It means **no new changelog commit**, not permission to skip
-receipt validation or hide existing `L`.
+the history gate or receipt validation, or to hide existing `L`.
 
 ### Candidates and committed anchors
 
@@ -561,13 +610,15 @@ cleanliness. Stop on any change rather than widening the operation.
    exact changed paths, target worktree contents/modes, covered
    work/anchors, and exact message including its final newline.
    Obtain explicit approval of all of it before committing.
-3. **Recheck immediately before committing.** Require the same branch
-   and head, identical index tree and full staged changed-path set,
-   unchanged message, and target worktree contents/modes identical to
-   the saved approval-time worktree state. Their Git content must still
-   match the approved index. Recheck safe paths too: `--only` reads
-   worktree files and must not pick up a later edit. Any index, path,
-   target, or head drift invalidates approval and stops.
+3. **Recheck immediately before committing.** Repeat the complete-history
+   gate before writing pending evidence or making the commit. Require
+   the same branch and head, identical index tree and full staged
+   changed-path set, unchanged message, and target worktree
+   contents/modes identical to the saved approval-time worktree state.
+   Their Git content must still match the approved index. Recheck safe
+   paths too: `--only` reads worktree files and must not pick up a later
+   edit. A failed history gate or any index, path, target, or head drift
+   invalidates approval and stops, even with unchanged endpoint OIDs.
 4. **Persist pending evidence, then make exactly one commit.** Write
    the approved pending receipt atomically. On failure, do not commit.
    Supply the frozen message unchanged, with no editor rewrite:
@@ -660,11 +711,11 @@ in-the-moment confirmation after push and revalidation.
 ## Push
 
 Immediately before pushing, perform *Snapshot Revalidation*, including
-the freshly fetched base, current branch/head, existing PR identity or
-absence, and exact frozen title/body and scope. Any drift invalidates
-approval and stops. Require the approved head to remain the tip of the
-captured currently checked-out branch, then use that **OID**, not a
-mutable `HEAD`, as the source:
+the freshly fetched base and history gate, current branch/head, existing
+PR identity or absence, and exact frozen title/body and scope. Any drift
+invalidates approval and stops. Require the approved head to remain the
+tip of the captured currently checked-out branch, then use that **OID**,
+not a mutable `HEAD`, as the source:
 
 ```powershell
 git push origin <approved-head-OID>:refs/heads/<captured-current-branch>
@@ -692,8 +743,8 @@ lookup, and it cannot repair a wrong-base PR after pushing.
    Preserve an existing PR's draft state; for creation, show the
    resolved draft policy. Push approval is not this approval.
 3. **Immediately revalidate after approval and before writing.**
-   Repeat the remote head, fetched base, repository, branch/head, PR
-   identity/absence, and exact payload checks. A PR appearing,
+   Repeat *Snapshot Revalidation*, including its post-fetch history
+   gate, and the remote head and exact payload checks. A PR appearing,
    disappearing, retargeting, or becoming ambiguous stops; never
    silently switch operations, retarget it, or create a second PR.
 4. **Send exactly the approved title and body.**
@@ -728,10 +779,16 @@ Report the actual outcome, including a refusal or partial success:
 
 - Repository, mode, branch, captured base/head identities, and PR URL
   when known; distinguish a successful push from a verified PR write.
-- The complete `R`, including merges and old/new publisher commits in
-  `L`; matched work, partial associations, trailer-only groups, unmatched
-  work, and the distinct issue set. Use the captured inventory and name
-  what was actually approved; never infer a new subset for the report.
+- The history gate's observed result/error and refusal boundary, if any.
+  If history or required traversals could not be verified, say that no
+  current verified publication inventory is available. Never present a
+  truncated list as verified; label any previously captured inventory
+  as earlier evidence with its authorization invalidated.
+- The complete `R`, when verified, including merges and old/new publisher
+  commits in `L`; matched work, partial associations, trailer-only
+  groups, unmatched work, and the distinct issue set. Use the captured
+  inventory and name what was actually approved; never infer a new
+  subset for the report.
 - Changelog targets, whether a commit was added or skipped, receipt
   path/state, and verification evidence or discrepancies.
 - Any drafts left staged, nonconforming local commit, prior remote
@@ -763,6 +820,12 @@ Report the actual outcome, including a refusal or partial success:
 - **Today's date governs slot expansion.** Never reuse a previous day's
   `<MMDD>` for a numeric slot. For an earlier slot, the user must give
   a full path.
+- **Complete history is mandatory in both modes.** Require the successful
+  `false` result from *Preconditions* and complete required traversals
+  before trusting an inventory. Repeat the gate at every named boundary,
+  even with no new changelog commit or a no-op push. Never bypass refusal
+  by switching modes or repairing history; the operator must supply a
+  complete-history checkout and re-invoke independently.
 - **Both modes publish the complete captured range.** Branch mode
   includes unmatched work, merges, and publisher commits. Slot mode
   requires nonempty normalized `S = W`, disjoint from `L`; it is not a
@@ -806,8 +869,9 @@ Report the actual outcome, including a refusal or partial success:
   `repos/<owner>/<repo>/...` in its endpoint. Take every target from the
   `Repository` row after the remote cross-check has agreed with it.
   Never retry against an implicit repository.
-- **Report the actual outcome from the captured inventory.** Name the
-  PR URL when known, what was pushed, all publisher and work commits,
+- **Report the actual outcome from the verified inventory.** If history
+  proof fails, report that refusal, never a truncated range as verified.
+  Name the PR URL when known, what was pushed, publisher and work commits,
   partial or unproven associations, issues, receipt state, and any
   side effects left by a refusal. Do not claim a successful PR write
   from push success alone.

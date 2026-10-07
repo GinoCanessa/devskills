@@ -193,6 +193,15 @@ budgets. Omitting `mode` always means `automatic`, even on resume.
 Interactive mode does not add per-phase checkpoints; use `dev-do`'s
 `checkpoint_every` input in the unchanged hand-driven loop for those.
 
+**Both `dev-pr-open` modes require complete, verified non-shallow
+history.** A successful `git rev-parse --is-shallow-repository` result
+of `false` and complete required history traversals are prerequisites.
+Fetching only the base or resolving base/head OIDs does not establish
+complete feature ancestry. A shallow or unverifiable checkout refuses,
+even for an already-remote head or a re-run needing no new changelog
+entry; branch mode is not a workaround. Supply a complete-history
+checkout and re-invoke independently; the skill never repairs history.
+
 `dev-pr-open` accepts a named slot only when its nonempty, normalized
 `COMMIT` set exactly matches the captured branch work, apart from
 receipt-proven publisher changelog commits that remain visible separately.
@@ -346,10 +355,11 @@ When it is on:
   comment with its own receipt. It writes an `Issue` row into the slot's
   artifacts, which every later skill carries forward.
 - `dev-do` adds an `Issue: #N` trailer to its phase commits.
-- `dev-pr-open` reconciles the complete branch range, prepares any
-  missing changelog entries, and approves scope and PR content before
-  pushing. A separately approved PR create/update references every bound
-  issue in scope so merging closes them all.
+- `dev-pr-open` requires verified non-shallow history, reconciles the
+  complete branch range, prepares any missing changelog entries, and
+  approves scope and PR content before pushing. A separately approved PR
+  create/update references every bound issue in scope so merging closes
+  them all.
 
 Guardrails worth knowing: every GitHub write is confirmed in the moment,
 `analysis.md` and `approach*.md` are **never** published, the recorded
@@ -358,6 +368,15 @@ repository is cross-checked against `origin` before any write, and
 an existing PR's actual base/head repositories and branches **before**
 changelog work or push. A wrong-base, wrong-head, or ambiguous PR is a
 refusal, never an automatic retarget.
+
+**Complete history is a hard prerequisite in both PR scope modes.**
+The history probe must exit 0 and return the single value `false`.
+Shallow, failed, unavailable, empty, or unexpected results refuse.
+A base-only fetch and resolvable endpoint OIDs are insufficient. Every
+shallow checkout refuses, even if its boundary appears outside the
+range. No approval or switch to branch mode bypasses this gate; supply
+a complete-history checkout and re-invoke independently. The skill
+never deepens history or manipulates shallow metadata.
 
 **Changelog approval covers the complete commit.** Before editing,
 `dev-pr-open` enumerates the exact file or new fragment names. Tracked
@@ -370,18 +389,21 @@ renamed workaround. Unrelated directory siblings remain untouched.
 Every exact target is explicitly staged, including a new single-file
 changelog and new fragments, never a whole directory. Approval shows
 the entire staged patch, including new content, modes, deletions, and
-formatting, plus the full message and trailers. Immediate pre-commit
-rechecks and post-commit parent/tree/paths/message proof must match that
-approval before push is possible. A declined approval or interruption
-can leave staged drafts; a failed proof can leave a local commit.
-Neither is automatically reset, unstaged, amended, or compensated.
+formatting, plus the full message and trailers. The history gate repeats
+immediately before pending evidence or the commit is written. Immediate
+pre-commit rechecks and post-commit parent/tree/paths/message proof must
+match that approval before push is possible. A declined approval or
+interruption can leave staged drafts; a failed proof can leave a local
+commit. Neither is automatically reset, unstaged, amended, or compensated.
 
 Duplicate suppression reads anchors only from committed content at the
 captured head, not dirty or untracked text. When all anchors are covered,
 or the changelog setting is `none`, no new changelog commit is made.
 Prior receipt-proven publisher commits still appear in the full range,
 PR description, and report; they are excluded only from work attribution
-and new-entry candidates.
+and new-entry candidates. The history gate still applies with `none`,
+all anchors covered, valid receipts, or an already-remote head whose
+push would be a no-op.
 
 **Issue ownership is whole-document, or refusal.** A binding or marker
 identifies a candidate; it does not authorize replacement. An unchanged
@@ -431,7 +453,8 @@ and before the commit. Exact parent, tree, paths, message, repository,
 and saved target/work/anchor evidence must verify before that same record
 becomes `complete` with the commit OID. Atomic replacement preserves prior
 evidence on failure and stops before push. An interrupted pending record
-can complete only for one uniquely matching commit, never by subject.
+can complete only for one uniquely matching commit, never by subject,
+and must repeat the history gate immediately before the recovery write.
 
 PR receipts have the same local-only persistence limits as issue receipts.
 Missing or invalid evidence never grants bookkeeping status; a receipt-less
@@ -450,8 +473,15 @@ edit was never lost.
 
 The PR publisher revalidates the repository, current branch, head,
 freshly fetched base, and existing PR identity before the first changelog
-edit and again before push. After the one verified changelog advance,
-approval covers the complete range, exact PR content, and proposed push.
+edit and again before push. Every snapshot revalidation repeats the
+history gate after its base fetch, including the PR-write checks below.
+Shallow or unverifiable history invalidates authorization even when
+endpoint OIDs are unchanged; a truncated list cannot be reported as
+verified. A refusal reports prior effects without claiming rollback or
+recapturing a smaller range.
+
+After the one verified changelog advance, approval covers the complete
+range, exact PR content, and proposed push.
 The push pins that approved head OID to the captured current branch with
 an ordinary non-force refspec; it does not configure an upstream.
 Pushing can already update an existing PR, so content review comes first.
