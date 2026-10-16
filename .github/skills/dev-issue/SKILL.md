@@ -533,7 +533,7 @@ verbatim** — it is deliberately not duplicated there.
   one row is this skill's to write; every other line of
   `featurerequest.md`, `bugreport.md`, and `plan.md` belongs to the
   skill that authored it.
-- **`analysis.md` and `approach*.md` are never published.** Not as an
+- **`review.md` and `approach*.md` are never published.** Not as an
   issue, not as a comment, not as a quotation. Review findings re-enter
   the loop as a new `dev-request` / `dev-report`, which get their own
   issue; a solution shape reaches GitHub only through `plan.md`. The

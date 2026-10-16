@@ -25,7 +25,7 @@ The following links name existing, navigable owner contracts.
 | `selection` | `dev-approach` [Judgment File Format](../../dev-approach/SKILL.md#judgment-file-format) and [User Override](../../dev-approach/SKILL.md#user-override) | `approach.md` |
 | `plan-work`, `review-plan` | `dev-plan` [Plan Format](../SKILL.md#plan-format) and [Iteration Mode](../SKILL.md#iteration-mode) | `plan.md` |
 | `phase-checkpoint`, `final-verification` | `dev-do` [Workflow](../../dev-do/SKILL.md#workflow) and [Iteration Mode (Recovery Path)](../../dev-do/SKILL.md#iteration-mode-recovery-path) | `plan.md` |
-| `review` | `dev-review` [Report Format](../../dev-review/SKILL.md#report-format) | `analysis.md` |
+| `review` | `dev-review` [Report Format](../../dev-review/SKILL.md#report-format) | `review.md` |
 | No result or receipt | `dev-complete` [What This Skill Owns](../../dev-complete/SKILL.md#what-this-skill-owns) | None |
 
 Put receipts under one current `## Handoff Evidence` in the existing
@@ -399,7 +399,7 @@ Use a `control` block with keys `version`, `kind`, `subject`, `data`,
 in that order. Version is `"handoff-v1"` and subject is the host artifact
 path. Unlike receipts, **retain the entire block in the projection**.
 There is exactly one current `selection` control in `approach.md`, and
-one current `review-scope` control in a sealed `analysis.md`.
+one current `review-scope` control in a sealed `review.md`.
 
 A selection's `data` tuple is:
 
@@ -804,7 +804,7 @@ fourth element. Resolve every relevant finding to its actual review
 result. No private finding title, recommendation, or reviewer prose is
 copied into source/plan evidence.
 
-For review-plan, retain the exact reviewed scope even after `analysis.md`
+For review-plan, retain the exact reviewed scope even after `review.md`
 is overwritten. Remediation-phases is the ordered list of
 `[phase-number, phase-id]`, or `[]` for none. A clean review creates no
 phase or commit. Bind planning idempotence to `(iteration, review-result)`;

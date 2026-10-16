@@ -147,7 +147,7 @@ modify, rename, or delete it. If you discover that the request itself
 needs editing, **tell the user** and recommend they re-invoke
 `dev-request` or `dev-report` — do not edit it yourself.
 
-The same applies to any sibling `plan.md` or `analysis.md`. This skill
+The same applies to any sibling `plan.md` or `review.md`. This skill
 writes exactly four files and no others.
 
 ## Workflow
@@ -541,7 +541,7 @@ so and offer the right tool rather than recording a fourth design in an
 - **Source is read-only.** Never write to `featurerequest.md` or
   `bugreport.md`. If the request itself needs changing, recommend
   re-invoking `dev-request` / `dev-report`. The same holds for a
-  sibling `plan.md` or `analysis.md` — this skill writes four files and
+  sibling `plan.md` or `review.md` — this skill writes four files and
   no others.
 - **Today's date governs slot expansion.** Never reuse a previous day's
   `<MMDD>` for a numeric slot. For an earlier slot, the user must give
@@ -569,7 +569,7 @@ so and offer the right tool rather than recording a fourth design in an
   stated reason. Downstream skills get one contract, not two.
 - **`approach*.md` is never published to GitHub.** Not as an issue, not
   as a comment, not as a quotation in a PR body. These are internal
-  artifacts, exactly like `analysis.md`. A shape worth publishing
+  artifacts, exactly like `review.md`. A shape worth publishing
   reaches GitHub through `plan.md`, which `dev-issue` attaches.
 - **Populate the `Issue` row, never invent it.** Read it from the
   source artifact under the **no-downgrade ratchet**: never replace an

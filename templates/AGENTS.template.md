@@ -231,7 +231,7 @@ scratch/<MMDD>-<##>/
   approach-c.md        # authored by dev-approach (unconstrained)
   approach.md          # authored by dev-approach (the judge's selection)
   plan.md              # authored by dev-plan, updated by dev-do
-  analysis.md          # authored by dev-review
+  review.md          # authored by dev-review
 ```
 
 Use a **separate exploration slot** for `dev-explore`:

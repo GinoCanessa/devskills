@@ -95,7 +95,7 @@ You are the loop's **conductor**. That means:
    non-negative integer, with a hard upper bound of `5`, matching the
    domain its two siblings carry. One iteration is a full `dev-review`
    pass **plus** remediation of what it raised, so the default leaves an
-   `analysis.md` written *before* its own fixes; `2` re-reviews the
+   `review.md` written *before* its own fixes; `2` re-reviews the
    remediated tree. **`0` skips the review tail entirely and ends the
    run at `dev-do`.** This is the only spelling — there is deliberately
    no flag-style alias for `0`, so that there is exactly one name per
@@ -120,7 +120,7 @@ today, dispatched here as a stage:
 - `approach-a.md`, `approach-b.md`, `approach-c.md`, and `approach.md` →
   `dev-approach`
 - `plan.md` → `dev-plan` (created) and `dev-do` (updated)
-- `analysis.md` → `dev-review`
+- `review.md` → `dev-review`
 
 You read all of them and write none of them. When a stage's output is
 wrong, **re-dispatch the stage** — never reach into its file and correct
@@ -230,7 +230,7 @@ Hand each stage sub-agent these inputs:
    | Approach | `dev-approach` | the source artifact above |
    | Plan | `dev-plan` | the source artifact above |
    | Execution | `dev-do` | `<slot>\plan.md` |
-   | Review | `dev-review` | `<slot>\analysis.md` |
+   | Review | `dev-review` | `<slot>\review.md` |
 
 3. **The content, verbatim — the authoring stage only.** The raw input
    this run was given, passed through unchanged, so that stage has
@@ -685,7 +685,7 @@ of the stage's own artifact:
 | `bugreport.md` | `## Notes` |
 | `approach.md` | `## Notes` |
 | `plan.md` | `## Notes` |
-| `analysis.md` | `## Notes` |
+| `review.md` | `## Notes` |
 
 `featurerequest.md` is the only slot artifact with an `## Assumptions`
 section; the rest carry a `## Notes` section and no assumptions section,
@@ -714,7 +714,7 @@ do not claim they will survive a new session.
   Dispatch* is what catches this outcome instead.
 - **A stage whose artifact does not yet exist has nowhere to write.**
   `dev-request` can yield before `featurerequest.md` exists, `dev-plan`
-  before `plan.md`, and `dev-review` writes `analysis.md` wholesale at
+  before `plan.md`, and `dev-review` writes `review.md` wholesale at
   the end. Such a hand-back is **undurable**: require the stage to say
   so in what it returns, and report it as undurable in the closing
   report and on resume — never silently. This is the earliest and least
@@ -724,7 +724,7 @@ do not claim they will survive a new session.
 **Durability differs by stage, because two artifacts are rewritten
 wholesale by the skill that owns them.**
 
-- **`dev-review` overwrites `analysis.md` on every pass.** Its scope
+- **`dev-review` overwrites `review.md` on every pass.** Its scope
   prompt cannot fire when `plan-slot` scope resolves — the normal case
   here — so the review stage normally writes no line at all. Any
   assumption, user answer,
@@ -937,13 +937,13 @@ report it in the closing report, naming why.
 **Remediation covers Blocker *and* High findings, not Blockers alone.**
 That is not a choice this skill gets to make: `dev-plan` § *Iteration
 Mode* names Blocker and High as the fold-back set, and `dev-review`
-§ *Report Format* prescribes an `analysis.md` whose `## Next Steps`
+§ *Report Format* prescribes an `review.md` whose `## Next Steps`
 section says the same. A narrower rule here would contradict the two
 skills this stage dispatches. Lower severities are reported, not
 remediated.
 
 **Remediation runs as a `dev-plan` iteration pass** handed
-`analysis.md`, which appends new phases to `plan.md`. Those phases
+`review.md`, which appends new phases to `plan.md`. Those phases
 **keep `dev-plan`'s numbered heading** and carry the marker in the name:
 
 ```text
@@ -961,7 +961,7 @@ its ordinary phase-commit protocol.
 raises no Blocker or High appends no phases, so remediation phases alone
 cannot distinguish "iteration *k* ran clean" from "iteration *k* never
 ran" — and guessing wrong burns a full two-pass review and overwrites
-`analysis.md` again. The **`dev-plan` remediation stage** therefore
+`review.md` again. The **`dev-plan` remediation stage** therefore
 appends one line to `plan.md`'s `## Progress Log` on **every**
 iteration, clean or not, before it returns **completed**:
 
@@ -974,7 +974,7 @@ after the remediation plan's questions and any execution approval have
 been settled, never merely because the stage returned `AWAITING_USER`.
 
 **Iteration *k* is complete when a marker naming `<k>` is present**, and
-the tail's progress is the highest `<k>` recorded. Keep `analysis.md`'s
+the tail's progress is the highest `<k>` recorded. Keep `review.md`'s
 `## Scope` **Commits** bullet as a cross-check on what the surviving
 analysis actually saw — never as the completeness test. Remediation
 appends new `COMMIT` entries to the plan by construction, so the two
@@ -994,7 +994,7 @@ invented to disambiguate. The form is a fourth labelled entry in a log
 `dev-plan` owns and documents, so it extends *that* skill's vocabulary
 and changes nothing about `dev-do`'s.
 
-**`dev-review` overwrites `analysis.md` on every pass.** With
+**`dev-review` overwrites `review.md` on every pass.** With
 `review_iterations: 2` the surviving file is the second pass's. That is
 `dev-review`'s documented behavior and is not changed here — say in the
 closing report which iteration the file reflects.
@@ -1042,7 +1042,7 @@ In this order:
    unanswered. Never count a skipped question as an approval.
 6. **Standing findings** — anything `dev-review` raised that the
    iteration budget did not close, at the same prominence as the
-   ledger, plus which iteration the surviving `analysis.md` reflects —
+   ledger, plus which iteration the surviving `review.md` reflects —
    or state that the review tail did not run, and why.
 7. **Next steps**, named as available to the **user** and never
    performed: `dev-issue` to publish the request or report and attach
@@ -1072,7 +1072,7 @@ In this order:
   outside `dev-do`'s phase-commit protocol, and no commit made by you
   directly. Pushing and opening a pull request belong to `dev-pr-open`,
   which the user invokes.
-- **No GitHub writes at all**, and `analysis.md` and `approach*.md` are
+- **No GitHub writes at all**, and `review.md` and `approach*.md` are
   **never** published — not as an issue, not as a comment, not as a
   quotation in a pull request body. Fetching an issue the user named as
   content is a read, and is allowed.

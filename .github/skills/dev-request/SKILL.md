@@ -336,7 +336,7 @@ command itself.
   wall of questions is not a walkthrough.
 - **Do not modify `bugreport.md` or `plan.md`** in the same slot — those
   are owned by `dev-report` and `dev-plan` respectively. The same goes
-  for `analysis.md`, which is owned by `dev-review`, and for
+  for `review.md`, which is owned by `dev-review`, and for
   `approach-a.md`, `approach-b.md`, `approach-c.md`, and `approach.md`,
   which are owned by `dev-approach`.
 - **You write the `Issue` row only at seed time.** After that, the row

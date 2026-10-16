@@ -47,7 +47,7 @@ knows about stacks, detection heuristics, and git plumbing.
 | `.github/skills/dev-approach/` | Eng Lead ×3 + Judge — authors `approach-a\|b\|c.md` and `approach.md`. |
 | `.github/skills/dev-plan/` | Eng Lead role — authors `plan.md`. |
 | `.github/skills/dev-do/` | Engineer role — executes `plan.md`, commits locally. |
-| `.github/skills/dev-review/` | Eng Lead + QA Lead roles — authors `analysis.md`. |
+| `.github/skills/dev-review/` | Eng Lead + QA Lead roles — authors `review.md`. |
 | `.github/skills/dev-issue/` | GitHub issue writer — sole writer of issues and of the `Issue` binding row; owns the Resolve-and-Record Protocol. |
 | `.github/skills/dev-pr-open/` | Push + PR — the only skill permitted to do either. |
 | `.github/skills/dev-complete/` | Orchestrator role — drives the whole chain in one invocation; owns no artifact. |
@@ -126,7 +126,7 @@ change to a skill done:
 3. **Cross-skill references resolve.** Skill names cited in one skill exist
    as directories; file names cited (`featurerequest.md`, `bugreport.md`,
    `approach-a.md`, `approach-b.md`, `approach-c.md`, `approach.md`,
-   `plan.md`, `analysis.md`, `AGENTS.md`) match what the authoring skill
+   `plan.md`, `review.md`, `AGENTS.md`) match what the authoring skill
    actually writes.
    The separate exploration loop owns `request.md`, `approaches.md`,
    `outline.md`, `sources.md`, and `review.md`.
@@ -476,7 +476,7 @@ These are decisions, not preferences. Violating one is a review Blocker.
 - **The loop's file ownership is fixed.** `featurerequest.md` →
   `dev-request`, `bugreport.md` → `dev-report`, `approach-a.md` /
   `approach-b.md` / `approach-c.md` / `approach.md` → `dev-approach`,
-  `plan.md` → `dev-plan` (created) and `dev-do` (updated), `analysis.md` →
+  `plan.md` → `dev-plan` (created) and `dev-do` (updated), `review.md` →
   `dev-review`. No skill writes another's file, and `dev-complete` writes
   **none** of them — it orchestrates, and every slot file is still written
   by the skill that owns it. `dev-plan` and `dev-do` treat the source
@@ -500,7 +500,7 @@ These are decisions, not preferences. Violating one is a review Blocker.
   Palettes must remain readable in both themes and introduce no network
   or build dependencies.
 - **`dev-review` is read-only** with respect to the codebase. It writes
-  `analysis.md` and nothing else.
+  `review.md` and nothing else.
 - **`dev-do` commits locally, never pushes, never opens a PR.** Its
   phase-commit protocol (owned paths → clean-index gate → `PENDING` log
   entry → path-limited commit → identity check → `COMMIT` log entry) is a
@@ -519,7 +519,7 @@ These are decisions, not preferences. Violating one is a review Blocker.
   approval. `dev-do`'s prohibition is unchanged and is not to be relaxed.
 - **The integration is off by default.** An absent `## GitHub Integration`
   section, or one whose `Enabled` row says `no`, means off — and
-  `analysis.md` and `approach*.md` are never published. That prohibition is
+  `review.md` and `approach*.md` are never published. That prohibition is
   on the **files**: `plan.md`'s `Approach` metadata row and its
   `## Approach` section are `dev-plan`'s own prose and are published
   normally, both in `dev-issue`'s plan comment and in `dev-pr-open`'s PR
@@ -628,7 +628,7 @@ scratch/<MMDD>-<##>/
   approach-c.md        # authored by dev-approach (unconstrained)
   approach.md          # authored by dev-approach (the judge's selection)
   plan.md              # authored by dev-plan, updated by dev-do
-  analysis.md          # authored by dev-review
+  review.md          # authored by dev-review
 ```
 
 An **exploration slot** is separate from an implementation slot:

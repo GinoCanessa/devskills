@@ -1,6 +1,6 @@
 ---
 name: dev-review
-description: "Performs a two-track code-quality and QA review in the roles of a staff-level Engineering Lead and QA Lead, then synthesizes both critiques into a single `analysis.md`. USE FOR: pre-PR self-review, post-`dev-do` quality gates, ad-hoc deep reviews of a change set. Accepts either a full path to the analysis file or a short slot number that expands to `scratch/[MMDD]-[##]/analysis.md`. Optional `max_subagents` (default 3) caps parallel sub-agent fan-out. Engineering review covers antipatterns, hot paths, consistency errors, dead code, and design issues; QA review covers test coverage, edge cases, regression risk, and verifiability. Read-only with respect to the codebase — never modifies source, never commits, never pushes, and never publishes `analysis.md` to GitHub. Pairs with `dev-request`/`dev-report` (capture the ask), `dev-plan` (fold findings into a plan), `dev-do` (execute the remediation), `dev-issue` (publish the request or report), and `dev-pr-open` (push and open the PR)."
+description: "Performs a two-track code-quality and QA review in the roles of a staff-level Engineering Lead and QA Lead, then synthesizes both critiques into a single `review.md`. USE FOR: pre-PR self-review, post-`dev-do` quality gates, ad-hoc deep reviews of a change set. Accepts either a full path to the analysis file or a short slot number that expands to `scratch/[MMDD]-[##]/review.md`. Optional `max_subagents` (default 3) caps parallel sub-agent fan-out. Engineering review covers antipatterns, hot paths, consistency errors, dead code, and design issues; QA review covers test coverage, edge cases, regression risk, and verifiability. Read-only with respect to the codebase — never modifies source, never commits, never pushes, and never publishes `review.md` to GitHub. Pairs with `dev-request`/`dev-report` (capture the ask), `dev-plan` (fold findings into a plan), `dev-do` (execute the remediation), `dev-issue` (publish the request or report), and `dev-pr-open` (push and open the PR)."
 ---
 
 # Dev Review Skill
@@ -8,7 +8,7 @@ description: "Performs a two-track code-quality and QA review in the roles of a 
 Acts as a **staff-level Engineering Lead** *and* a **staff-level QA Lead**
 for local development work in this repository. Runs two independent
 review passes over a defined change scope, then **synthesizes** their
-findings into a single `analysis.md` that an engineering team can act on.
+findings into a single `review.md` that an engineering team can act on.
 
 This skill is for shortcutting the local inner loop — typically run
 **after** `dev-do` has produced a phase or two of commits, or **before**
@@ -162,10 +162,10 @@ promotion: a verified nit at 100 is still a nit.
 
 1. **Target** *(required)* — where to write the analysis. One of:
    - A **full path** (absolute or repo-relative) to a `.md` file. Used
-     verbatim. Example: `scratch/0423-02/analysis.md`,
-     `C:\path\to\repo\scratch\0501-04\analysis.md`.
+     verbatim. Example: `scratch/0423-02/review.md`,
+     `C:\path\to\repo\scratch\0501-04\review.md`.
    - A **slot number** (one or more digits, e.g. `2`, `02`, `14`).
-     Expands to `scratch/<MMDD>-<##>/analysis.md`, where:
+     Expands to `scratch/<MMDD>-<##>/review.md`, where:
      - `<MMDD>` is **today's local date** (zero-padded month + day).
      - `<##>` is the slot number, **always zero-padded to two digits**.
    - When given a number, confirm the resolved path back to the user
@@ -210,7 +210,7 @@ promotion: a verified nit at 100 is still a nit.
 This is the order of operations:
 
 1. **Detect a sibling `plan.md`.** If the resolved analysis path is
-   `scratch/<MMDD>-<##>/analysis.md` and a `plan.md` exists in the
+   `scratch/<MMDD>-<##>/review.md` and a `plan.md` exists in the
    same directory, attempt **`plan-slot`** scope:
    - Read `plan.md`'s `## Progress Log` and collect the SHA from every
      `COMMIT` entry. Ignore `PENDING` and `NOTE` entries — a `PENDING`
@@ -244,7 +244,7 @@ mis-scoping before any expensive work happens.
 
 1. **Resolve the analysis path.** Echo it.
 2. **Resolve the review scope** as described above. Echo the concrete
-   file list and (where applicable) commit list. If `analysis.md`
+   file list and (where applicable) commit list. If `review.md`
    already exists, note that you'll overwrite it.
 3. **Pre-flight.**
    - Confirm the working tree state with `git status` so you know
@@ -335,7 +335,7 @@ mis-scoping before any expensive work happens.
    is for. Adopt critique findings that prevent miscommunication; set
    aside findings that bloat the report. Briefly note in your reply what
    (if anything) changed.
-7. **Write `analysis.md`.** Overwrite if present.
+7. **Write `review.md`.** Overwrite if present.
 8. **Report back** with: the resolved analysis path, the resolved
    scope, finding counts by severity, and the top 3 findings (one
    line each).
@@ -534,13 +534,13 @@ at all.
 
 ## Iteration Mode
 
-`analysis.md` is a snapshot, not a living document. When invoked
-against a slot whose `analysis.md` already exists:
+`review.md` is a snapshot, not a living document. When invoked
+against a slot whose `review.md` already exists:
 
 - Treat it as a **re-review**. Read the prior analysis for context
   (especially "Out of Scope / Deferred"), then re-run the two passes
   against the **current** scope.
-- Overwrite `analysis.md` with the fresh report. Mention in your
+- Overwrite `review.md` with the fresh report. Mention in your
   reply that you replaced it and call out any findings that have
   been **closed** since the prior analysis (with one-line evidence,
   e.g., "B1 from prior analysis is now resolved by commit `abc1234`").
@@ -551,8 +551,8 @@ against a slot whose `analysis.md` already exists:
 
 - **Read-only.** This skill never modifies source, never stages,
   never commits, never pushes. The only file it writes is
-  `analysis.md` (and the parent directory if missing).
-- **`analysis.md` is never published to GitHub.** Not as an issue, not
+  `review.md` (and the parent directory if missing).
+- **`review.md` is never published to GitHub.** Not as an issue, not
   as a comment, not as a quotation in a PR body. It is an internal
   artifact. Findings re-enter the loop as a new `dev-request` /
   `dev-report`, which get their own issue via `dev-issue`.

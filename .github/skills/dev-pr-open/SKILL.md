@@ -359,7 +359,7 @@ required traversals. Once the complete commit list is resolved:
    commits, and every `#N` from the `Issue` row of every in-scope
    slot's artifacts. Their **union** is the set of issues this pull
    request closes. The protected-file read ban applies here too:
-   never open `analysis.md` or `approach*.md` for binding discovery.
+   never open `review.md` or `approach*.md` for binding discovery.
 4. **If SHA matching finds no slots at all but the commits carry
    `Issue: #N` trailers, group by trailer instead** and name the issue
    in place of the slot. A rebase before opening a pull request is
@@ -802,12 +802,12 @@ Report the actual outcome, including a refusal or partial success:
   that at merge time; this skill does not close anything itself.
 - **Never takes the pull request out of draft.** Marking it ready for
   review is a human signal about human readiness.
-- **Never reads or quotes `analysis.md` or `approach*.md`.** Review
+- **Never reads or quotes `review.md` or `approach*.md`.** Review
   findings and rejected solution shapes are internal artifacts; they do
   not belong in a public PR body. The prohibition is on the **files** —
   *Body assembly* step 2 lifts `plan.md`'s `## Approach` section into
   the body as it always has, because that section is `dev-plan`'s own
-  prose. When `analysis.md` is **absent** — for the named slot in slot
+  prose. When `review.md` is **absent** — for the named slot in slot
   mode, or for any in-scope slot in branch mode — *recommend* running
   `dev-review` against it first, naming which slots lack one. A
   recommendation, **never a gate**.
@@ -843,7 +843,7 @@ Report the actual outcome, including a refusal or partial success:
   sanctioned home for both operations.
 - **Slot artifacts are read-only here,** in both modes and for every
   slot discovery turns up. This skill writes no `featurerequest.md`,
-  `bugreport.md`, `plan.md`, `analysis.md`, or `approach*.md`. The
+  `bugreport.md`, `plan.md`, `review.md`, or `approach*.md`. The
   `Issue` binding belongs to `dev-issue` — if a slot is unbound and the
   user wants it bound, point them at `dev-issue` rather than writing a
   number yourself. Never downgrade or repair a binding here.

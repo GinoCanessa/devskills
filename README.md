@@ -39,7 +39,7 @@ approaches, and review, but never enters the code/commit chain.
 | `dev-approach` *(optional)* | Eng Lead ×3 + Judge | a request or report | `scratch/<MMDD>-<##>/approach-a\|b\|c.md` + `approach.md` |
 | `dev-plan` | Staff-level Eng Lead | a request or report | `scratch/<MMDD>-<##>/plan.md` |
 | `dev-do` | Staff-level Engineer | `plan.md` | source code + local commits |
-| `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/analysis.md` |
+| `dev-review` | Eng Lead + QA Lead | a change scope | `scratch/<MMDD>-<##>/review.md` |
 | `dev-issue` *(opt-in)* | Release-minded engineer | a request, report, or plan + ownership receipts | a GitHub issue + managed plan comment + the slot's `Issue` rows + private receipts |
 | `dev-pr-open` *(opt-in)* | Release engineer | the complete branch range, an optional matching plan, and changelog receipts | a pushed branch, a PR, one approved changelog-only commit when needed, and private receipts |
 | `dev-complete` | Orchestrator | a slot + a kind + content + optional mode | *nothing of its own; drives the skills that write* |
@@ -362,7 +362,7 @@ When it is on:
   them all.
 
 Guardrails worth knowing: every GitHub write is confirmed in the moment,
-`analysis.md` and `approach*.md` are **never** published, the recorded
+`review.md` and `approach*.md` are **never** published, the recorded
 repository is cross-checked against `origin` before any write, and
 `dev-pr-open` refuses detached `HEAD` or the default branch. It validates
 an existing PR's actual base/head repositories and branches **before**

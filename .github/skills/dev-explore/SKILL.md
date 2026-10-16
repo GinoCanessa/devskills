@@ -98,7 +98,7 @@ Markdown may include illustrative snippets, but never execute them.
 
 **Do not mix slot types.** Stamp `| Workflow | dev-explore |` in
 `request.md`. Refuse a slot containing `featurerequest.md`, `bugreport.md`,
-`plan.md`, `analysis.md`, or the implementation loop's four approach files.
+`plan.md`, `review.md`, or the implementation loop's four approach files.
 Refuse to adopt an existing unmarked `request.md` or other unowned control
 files. These artifacts carry no `Issue` binding and are never handed to
 `dev-issue` or `dev-pr-open`. Use a different slot for implementation.

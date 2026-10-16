@@ -346,7 +346,7 @@ When `plan.md` already exists:
 - If the user's new input invalidates a Complete phase, surface that
   clearly in your response and propose a new phase to undo/redo it
   rather than rewriting history.
-- If a sibling `analysis.md` (from `dev-review`) exists in the slot,
+- If a sibling `review.md` (from `dev-review`) exists in the slot,
   read it. Its Blocker and High findings are valid input for a plan
   revision — fold them in as new remediation phases (with their own
   `**Owned paths:**` and `**Verification:**` blocks) rather than
