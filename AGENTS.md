@@ -417,6 +417,28 @@ change to a skill done:
     Installer verification must compare every copied support file's
     relative path and hash, not just count `SKILL.md` files.
 
+13. **Walk the proportional loop's decision paths.** Inspect the changed
+    contracts, without activating the separate sealed-handoff protocol:
+    readiness failure before edits yields one bounded unblock request
+    and no unchanged-input retry or code-attempt charge; all authors and
+    the judge use one settled six-field product-contract revision.
+    Explicit alternatives/review depth override lightweight routing.
+    Exercise unchanged ready-plan reuse, a one-criterion revision,
+    changed baseline/dependencies/platform, and an interrupted active
+    owner. Confirm targeted revalidation preserves execution history,
+    and a delayed reply never starts a duplicate author. Check that
+    invalidated receipts rerun affected checks while final and commit
+    gates remain mandatory; missing usage clocks stay unavailable.
+    Check standalone execution refuses a changed or unknown contract
+    before writes. A final-only criterion change after completion must
+    rerun the final gate without phase replay or commits. Retain a
+    retired selection while planning directly only with current owner
+    evidence. Inspect report rendering with an absolute checkout path
+    and private service origin: require relative paths, safe references,
+    and marked evidence redactions instead.
+    These are inspection cases, not a new test framework or proof of
+    future task savings. README's matched-task pilot measures those.
+
 ---
 
 ## Lint / format
@@ -552,15 +574,38 @@ These are decisions, not preferences. Violating one is a review Blocker.
   with no way for the agent to notice. The one exception is
   `dev-complete`'s authoring stage, which passes raw content because the
   artifact does not exist yet; it is documented there as an exception.
-- **Work belongs in a role, not in the caller.** A skill that has defined
-  an agent for a job dispatches it even when the job looks small enough
-  to absorb. The caller may be running a model chosen for orchestration,
-  it holds tools the role deliberately lacks, and it may be the same
-  context that produced the thing under examination. A cost threshold
-  decides **how many** agents run — one reviewer instead of two, one
-  implementer instead of three — never whether the work happens in a role
-  at all. `dev-review` § *Sub-Agent Use* and `dev-do` § *Sub-Agent Use*
-  carry the two instances.
+- **Route work proportionally without losing independence.** Settled
+  maintenance stays with its direct owner and focused checks; bounded
+  implementation uses phases and independent final review; contested
+  architecture or requested alternatives use isolated authors and a
+  judge. `dev-do` permits direct settled maintenance or verbatim edits,
+  otherwise using an implementer. `dev-review` always uses a read-only
+  reviewer role; its threshold decides one reviewer versus two, never
+  review by the context that wrote the code. Extra review cycles need
+  new material evidence, stated risk, or an explicit user request.
+- **Readiness precedes expensive work.** Check only relevant prerequisites
+  read-only before authors, tool-dependent planning probes, and
+  implementation. Preserve index/owned-path gates. Record
+  `readiness-blocked` separately from code failures; retry only changed
+  prerequisites or new diagnostic evidence, never unchanged failures.
+- **Contracts and resume identity are explicit.** Intake owns the short
+  revisioned product contract and dated scope deltas. Downstream roles
+  use the same revision. Compare repository/slot/stage, relevant inputs,
+  baseline, status, and active owner before dispatch; reuse valid work
+  and revise only affected sections, preserving execution history.
+  Standalone execution checks source/plan agreement before any write or
+  completion shortcut. Retired decisions require current owner evidence
+  before source-only planning; retained files alone are not active scope.
+- **Evidence is compact, not weaker.** Link durable receipts tied to
+  relevant inputs, commands, toolchain, platform, time, results and
+  limitations. Reuse only valid same-input evidence; required final
+  gates and commit identity remain mandatory. Keep local diagnostics
+  and aggregate telemetry private; do not activate the separate sealed
+  handoff contract, invent cache settings, or change model policy here.
+  Stale final evidence requires execution-owner final-only recovery,
+  preserving phase history. Bug reports use repository-relative paths
+  and safe service references, with marked privacy redactions in quoted
+  evidence; exact sensitive locations stay in private diagnostics.
 - **Prefer a built-in agent to a general-purpose one.** `explore` and
   `task` already run lightweight models, so routing discovery and
   documented-command runs to them *is* the mechanical tier — no `model:`

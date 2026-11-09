@@ -37,6 +37,12 @@ stage into one anonymous bucket.
 4. **Operate on the absolute artifact path you were given.** Never
    re-expand a slot number, and never resolve a path yourself when one
    was supplied.
+   Check supplied stage identity, frozen contract revision, and current
+   owner before authoring; reuse unchanged valid outputs and revise only
+   affected sections. Apply readiness before tool-dependent probes or
+   implementation. Report `readiness-blocked` separately from work
+   failures; never retry unchanged prerequisites or count environment
+   recovery as a code attempt.
 5. **Return** with what the skill's own reporting step asks for, plus
    anything the directive requires you to report.
 6. **Continue a paused question at its recorded step.** Apply the user's
@@ -74,3 +80,9 @@ stage into one anonymous bucket.
   and prefer the built-in lightweight agents — `explore` for locating
   code, `task` for running documented commands — over a general-purpose
   one for work that does not need judgment.
+- **Keep handoffs compact and bounded.** Follow `dev-do`'s Evidence
+  Receipts contract: objective, stage/input identity, baseline and owned
+  paths, constraints/decisions, readiness, acceptance evidence, blocker,
+  and next action/stop condition. Link artifacts, not entire ledgers.
+  Record public-safe lifecycle notes only in your skill's owned artifact
+  when its gates permit writing; no new registry or sealed protocol.

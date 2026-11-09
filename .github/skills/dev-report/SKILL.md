@@ -97,6 +97,8 @@ evidence they have.
 2. **Load existing content** if the file is present.
 3. **Triage the new input.** Sort it into Symptoms vs. Environment vs.
    Repro vs. Hypotheses. Don't mix them.
+   Apply § *Public-Safe Locations* to all sections and quoted evidence,
+   including content seeded from an issue.
 4. **Investigate lightly when cheap.** If the user gave you a stack
    trace, file path, or symbol, it's reasonable to open the referenced
    files (`view` / `grep`) to confirm or refine the hypothesis section.
@@ -105,6 +107,8 @@ evidence they have.
 5. **Identify gaps.** For each missing piece (no repro, no version, no
    stack), either record what's missing in the *Open Questions* section
    or ask a focused clarifying question.
+   Settle the short product contract before commissioning alternatives.
+   Fill known answers directly; ask only decisions that alter the result.
 6. **Write the file** using the format below. Preserve user-authored
    sections that don't conflict with your edits.
 7. **Report back** with: the resolved path, a one-paragraph summary, the
@@ -113,6 +117,40 @@ evidence they have.
    Questions* section is non-empty — see § *Open Questions
    Walkthrough*.
 
+## Product Contract
+
+**Freeze the intended correction, not a speculative cause.** Use the six
+fields below, following `dev-request` § *Product Contract* for revision,
+acceptance provenance, and dated scope deltas. A contract with a pending
+material decision cannot be `Ready-for-plan`; automatic assumptions are
+not user approvals. Keep the report's observations and hypotheses
+separate even when the expected behavior is settled.
+
+Record a narrow safe workaround separately from a future redesign.
+Deferred work names an owner and open questions in *Out of Scope /
+Related*, not extra implementation scope. Retain superseded decisions
+with their provenance; reuse evidence unaffected by the changed goal.
+
+## Public-Safe Locations
+
+**Use repository-relative paths in reports, never checkout roots.**
+Express in-repository files relative to the repository root, not as
+absolute, drive-qualified, network, or `file:` locations. For outside
+locations use a public-safe diagnostic ID, not `..` paths escaping the
+repository. Replace sensitive path components with labelled placeholders.
+Represent services by safe IDs and relative routes; omit private origins,
+identifying query values, credentials, and payloads.
+
+Keep exact sensitive locations and unredacted diagnostics containing
+them only in supported private session storage. If it is unavailable,
+state that limitation; never copy them into the report as a fallback.
+Apply this boundary to
+Environment, repro commands, Evidence, Notes, and screenshots-as-text,
+not only the new location field. Preserve evidence verbatim except for
+required location/privacy redactions, explicitly marking each redaction
+without changing the remaining diagnostic text. Publishing approval does
+not waive this report boundary.
+
 ## Report Format
 
 ```markdown
@@ -120,12 +158,24 @@ evidence they have.
 
 | | |
 |-|-|
-| Slot | `scratch/<MMDD>-<##>/` (or full path) |
+| Slot | {repository-relative slot path} |
 | Issue | [#N](<url>) — or `not published` |
 | Status | Draft / Investigating / Ready-for-plan |
 | Severity | Blocker / High / Medium / Low |
 | Created | {YYYY-MM-DD} |
 | Last updated | {YYYY-MM-DD} |
+| Contract revision | R{n} — pending / user / assumption |
+
+## Product Contract
+
+| Field | Accepted constraint |
+|-|-|
+| Deliverable | {TBD: expected corrected behavior} |
+| Actors / side effects | {TBD: actor and owner of each side effect} |
+| Execution semantics | {TBD: scheduled, incremental, batch, or n/a} |
+| Window / baseline | {TBD: exact window or baseline identity, or n/a} |
+| Preservation | {TBD: compatibility and existing work to preserve} |
+| Limits / exclusions | {TBD: non-negotiable limits and exclusions} |
 
 ## Summary
 
@@ -136,12 +186,21 @@ file should know whether this is their problem.}
 
 - **Repo / branch / commit:** {e.g., `<repo-name>` @ `<branch>` @ `<sha>`}
 - **OS / shell:** {e.g., Windows 11, PowerShell 7}
+- **Host / client / privileges:** {actual host and client OS, local or
+  remote execution, privilege context; use unknown where unobserved}
+- **Failing endpoint / path:** {repository-relative file path, or safe
+  service ID and relative route; use placeholders/private diagnostic IDs
+  for sensitive or outside locations, never an absolute checkout path}
 - **Runtime / toolchain versions:** {SDK, compiler, and package
   versions relevant here — take the pinned values from `AGENTS.md`
   where it records them}
 - **Affected project(s):** {which project(s) from the layout table in
   `AGENTS.md` the defect was observed in}
 - **Other relevant context:** {feature flags, config, services running}
+
+{For cross-machine failures, distinguish listener and transport checks
+from the remote application flow. Select commands for each actual OS;
+leave final resolution unverified if the affected client cannot be tested.}
 
 ## Symptoms
 
@@ -163,8 +222,9 @@ under which it has been observed.}
 ## Evidence
 
 {Stack traces, log excerpts, screenshots-as-text, links to failing CI
-runs, file paths + line numbers. Use code fences. Do not edit the
-evidence to "clean it up".}
+runs, repository-relative paths + line numbers. Use code fences. Mark
+required location/privacy redactions; otherwise preserve evidence
+verbatim, never "clean it up".}
 
 ## Hypotheses
 
@@ -267,8 +327,8 @@ question**, so an interrupted walkthrough never loses work.
   *Blast Radius* — written as settled content, not as "the user said".
   Keep the observation/interpretation split: an answer that confirms or
   kills a cause re-ranks *Hypotheses* and does not become a symptom.
-- Evidence the user pastes in is quoted **verbatim**, exactly as the
-  rest of *Evidence* is.
+- Quote pasted evidence **verbatim except required location/privacy
+  redactions** under § *Public-Safe Locations*. Mark those explicitly.
 - If the answer contradicts something already written, fix that too,
   and say so when you close.
 
@@ -360,8 +420,11 @@ command itself.
   must give a full path.
 - **Symptoms and hypotheses live in different sections.** Don't claim a
   cause as a symptom.
-- **Quote evidence verbatim.** Do not "tidy up" stack traces or log
-  lines.
+- **Keep locations public-safe.** Follow § *Public-Safe Locations*:
+  use repository-relative paths and private diagnostic references, never
+  absolute checkout paths in the report.
+- **Quote evidence faithfully.** Do not "tidy up" stack traces or log
+  lines; mark only required location/privacy redactions.
 - **Offer the walkthrough before you finish.** A pass that ends with a
   non-empty *Open Questions* section closes with the offer in
   § *Open Questions Walkthrough*. The user may decline and edit

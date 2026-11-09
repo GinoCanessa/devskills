@@ -1,6 +1,6 @@
 ---
 name: dev-complete
-description: "Orchestrates the local inner loop from a feature request or bug report to local commits. USE FOR: running or resuming `dev-request` / `dev-report` -> `dev-approach` -> `dev-plan` -> `dev-do`, followed by a `dev-review` -> `dev-plan` -> `dev-do` remediation tail. Accepts a slot number or full slot-directory path, kind `request` or `report`, content (prose or an issue reference), and optional `mode`, `max_subagents` (default 3), and `review_iterations` (default 1; 0 ends at `dev-do`). `automatic` (default) answers questions as recorded assumptions; `interactive` asks the user stage questions and confirmations with justified options, a recommendation, and free-form replies. Owns no artifact. Commits locally only; never pushes, opens a PR, or writes to GitHub. Publishing stays user-initiated via `dev-issue` / `dev-pr-open`."
+description: "Orchestrates the local inner loop from a request or report to local commits with read-only readiness and scope-based routing. USE FOR: running or resuming intake -> optional approach contest -> plan -> execution, then independent review and remediation. Accepts a slot or full slot-directory path, kind `request` or `report`, content, and optional `mode`, `max_subagents` (default 3, concurrency only), and `review_iterations` (default 1, ceiling; 0 skips review). `automatic` answers questions as recorded assumptions; `interactive` relays justified questions and confirmations. Reuses valid unchanged artifacts and resumes known owners instead of duplicating stages. Owns no artifact. Commits locally only; never pushes, opens a PR, or writes to GitHub. Publishing stays user-initiated via `dev-issue` / `dev-pr-open`."
 ---
 
 # Dev Complete Skill
@@ -8,14 +8,14 @@ description: "Orchestrates the local inner loop from a feature request or bug re
 Runs the whole local inner loop under **one** invocation. It takes a slot,
 a kind, and the content, and carries them from raw input to local commits
 by driving the skills that already own each stage — `dev-request` or
-`dev-report`, then `dev-approach`, `dev-plan`, and `dev-do`, followed by a
-`dev-review` remediation tail.
+`dev-report`, an approach contest when warranted, then `dev-plan` and
+`dev-do`, followed by a `dev-review` remediation tail.
 
 This skill is an **orchestrator, not a new role**. It does no PM,
 Engineering Lead, Engineer, or QA work itself, it introduces no new
 quality bar, and it changes no existing skill's output format, file
-ownership, or safety gates. Every artifact the hand-driven loop would have
-produced still exists when the run ends, so the slot is auditable
+ownership, or safety gates. Every artifact required by the selected route
+exists when the run ends, so the slot is auditable
 afterwards and any single skill can pick it up.
 
 It **owns no artifact.** It adds orchestration in two modes:
@@ -90,8 +90,8 @@ You are the loop's **conductor**. That means:
    it would leave a legal `max_subagents: 1` run with no budget for any
    stage to fan out at all.
 
-5. **`review_iterations`** *(optional, default `1`)* — how many
-   review-and-remediate cycles run after the execution stage. A
+5. **`review_iterations`** *(optional, default `1`)* — the maximum
+   review-and-remediate cycles after the execution stage. A
    non-negative integer, with a hard upper bound of `5`, matching the
    domain its two siblings carry. One iteration is a full `dev-review`
    pass **plus** remediation of what it raised, so the default leaves an
@@ -130,14 +130,13 @@ would otherwise have had to fix it.
 
 ## The Stage Chain
 
-The chain is **fixed**. No argument skips a stage inside the authoring
-chain.
+**Route by scope, not reflexive stage count.** Apply § *Workflow Routing*
+after intake; do not skip authoring, planning, execution, or their gates.
 
 ```text
-  dev-request / dev-report        the authoring chain: fixed,
-            |                     no stage may be skipped
+  dev-request / dev-report
             v
-      dev-approach
+      dev-approach                contested / explicitly requested only
             |
             v
         dev-plan  <---------+
@@ -167,18 +166,29 @@ The run, in order:
 3. Read the repository's `AGENTS.md` for conventions and commands, with
    the documented fallback to `README.md` / `CONTRIBUTING.md`, and say
    which source you used.
+   Apply `dev-do` § *Readiness Gate* read-only before dispatching authors.
+   Check only known task prerequisites; defer unrelated or not-yet-known
+   tools rather than provisioning them. Return `readiness-blocked` and
+   one bounded unblock request when a required prerequisite fails.
 4. Determine the resume point from the artifacts already on disk, and
    rebuild the assumption and user-decision records — see § *Resume*.
+   Check stage identity and active ownership under § *Stage Identity*.
 5. Run each incomplete stage in chain order, one dispatch at a time,
-   classifying each outcome from the artifact on disk.
-6. Run the review tail `review_iterations` times.
+   classifying each outcome from the artifact on disk. After authoring,
+   route from the settled contract. Recheck affected readiness before
+   tool-dependent planning probes and before implementation dispatch.
+6. Run the review tail up to `review_iterations` times, stopping when
+   no new material finding, stated risk, or requested depth warrants more.
 7. Print the closing report.
 
 Three properties of the chain are load-bearing:
 
-- `dev-approach` is **optional in the hand-driven loop and mandatory
-  here, in both modes.** Interactive confirmation gates the selection;
-  it does not make the approach stage optional.
+- `dev-approach` design work runs for contested architecture or requested
+  alternatives; retirement uses only its owner metadata operation.
+  Settled/bounded work plans directly from the source.
+  Keep an existing current selection; never delete it to simplify routing.
+  Interactive confirmation gates a selection only when that route uses
+  one, and always gates the plan before execution.
 - The review tail is the **one sanctioned backward step**. No other
   stage reopens an earlier one: resolving a stage means settling *that*
   stage's questions and refining *that* stage's artifact before
@@ -186,6 +196,78 @@ Three properties of the chain are load-bearing:
 - The chain ends at the review tail's remediation. It never extends to
   `dev-issue` or `dev-pr-open` — publishing and pushing stay
   user-initiated.
+
+## Workflow Routing
+
+**Record the route before commissioning options.** Have the authoring
+stage record in its *Notes*: owned scope, unresolved choices,
+public/compatibility impact, requested review depth, tier, and reason.
+Use the settled product contract, not file count alone:
+
+| Tier | Route |
+|-|-|
+| Settled maintenance | Established shape, no material behavior/interface change or preservation risk: direct owner, one-phase plan when sufficient, focused checks; no automatic contest or planning critique. |
+| Bounded implementation | Known boundaries and behavior change: phased plan, one implementation owner per phase, one final independent review cycle by default; no automatic contest. |
+| Contested architecture | Material unresolved alternatives, high-risk boundaries or compatibility choices: isolated authors and a judge, explicit risk-driven checks and review depth. |
+
+Explicitly requested alternatives or deeper review take precedence.
+Doubt about material risk selects the more scrutinized route, never a
+silent lightweight assumption. The plan owner validates and records the
+tier; a newly discovered scope conflict returns to its owner rather than
+silently changing the contract. Do not invent a provider configuration
+key for these tiers.
+
+On resume, preserve the recorded route when relevant inputs are unchanged.
+Complete an already-started selection at its known step rather than
+skipping it because a new default would plan directly. A changed route
+must explicitly retire superseded decisions through their owners; never
+delete an approach artifact or silently consume a stale selection.
+For a source-only route with historical approach files, reuse a current
+retirement record or dispatch only the retirement operation under
+`dev-approach` § *Retiring a Decision*. Require that record to match the
+current source and route before direct planning; do not regenerate
+authors or judge merely to retain history.
+
+`max_subagents` limits concurrency, **not total dispatches**. Prefer one
+owner and one final independent review cycle for bounded work. An
+additional cycle needs a new material finding, stated risk, or explicit
+user request; record the reason before dispatch. Honor the supplied
+`review_iterations` ceiling, including an explicit `0`, and report a
+skipped review without claiming independent assurance. Never spend the
+ceiling merely because budget remains. Preserve all phase receipts and
+commits, even without interactive pauses; users can request supervised
+per-phase recovery through `dev-do`'s supported `checkpoint_every`.
+
+## Stage Identity
+
+**Check existing work before starting an author.** Key a stage by the
+resolved repository root, dated slot, stage/iteration, baseline commit,
+source and decision fingerprints, and contract revision. Include focus,
+permissions, relevant dirty state and validated readiness in staleness
+assessment; equal source hashes alone do not prove reuse is safe.
+Expected phase commits are execution history, not a new task. Assess
+affected inputs instead of reauthoring the chain merely because `HEAD`
+advanced; external changes still require targeted staleness assessment.
+
+Read status, input identity, and current owner/task handle from the
+owning artifact's existing notes and supported local session metadata.
+Keep absolute roots, private handles, and raw readiness diagnostics in
+private session storage. Have the stage record public-safe identity
+digests, relative slot, baseline, input fingerprints, owner/handle or
+`unavailable`, and lifecycle state in its own artifact when writing is
+permitted. Use `active`, `awaiting-user`, `readiness-blocked`, `blocked`,
+or `complete`; do not add a conductor-owned file, registry, or seal.
+These notes do not activate the separate `handoff-v1` contract.
+
+An active known task is continued or awaited through its known handle,
+not redispatched because a reply is late. If ownership is uncertain,
+require an explicit handoff. A completed stage with unchanged valid
+inputs is reused without a write. If inputs changed, identify affected
+sections and evidence and ask only their owner for targeted revision;
+preserve unaffected decisions and execution history. A changed goal
+first belongs to the source owner and its dated contract delta, not a
+fresh full contest. Report changed-goal work separately from duplicate
+rework. Readiness failures and clarification turns are not code attempts.
 
 ## Stage Dispatch
 
@@ -195,7 +277,8 @@ directory of this skill's own directory, and each stage's file is
 needs exists before the first dispatch. A missing stage file is a
 blocker: hand back and name it.
 
-**Dispatch one sub-agent per stage.** This is load-bearing, not an
+**Dispatch one sub-agent per incomplete selected stage.** This is
+load-bearing, not an
 implementation detail. It keeps your own context small enough to survive
 five-plus stages, it gives the retry loop a clean unit to retry, and —
 because a fresh sub-agent re-reads the `SKILL.md` from disk — a
@@ -246,6 +329,16 @@ Hand each stage sub-agent these inputs:
    together with any other input that stage documents and this run
    fixes. The execution stage runs with **`checkpoint_every: 0` in both
    modes**. Interactive decision prompts are not per-phase checkpoints.
+6. **A compact evidence-linked handoff**, following `dev-do`
+   § *Evidence Receipts*: stage identity, frozen contract revision,
+   routing reason, owned scope, permitted effects, evidence target,
+   readiness receipt, blocker, next permitted action and stop condition.
+   Give paths and deltas, not entire artifacts or ledgers. Reuse stable
+   instruction references; never remove mandatory safety context.
+   Record the known task handle in supported private session metadata
+   as soon as it exists, and pass it on continuation; use `unavailable`
+   honestly where the host exposes no handle. Do not copy private
+   runtime identifiers into a publishable artifact.
 
 A stage sub-agent runs at the **reasoning** tier — see
 § *Sub-Agent Model Tier*. A stage is the whole skill it names, judgment
@@ -331,60 +424,36 @@ match wins**:
    new `COMMIT` entries — and marks nothing `Blocked`, so branch 5 would
    read it as a stage that yielded early and re-dispatch it to yield
    identically.
-2. **The artifact is byte-identical to the baseline** → **one
-   diagnose-then-retry, then blocker**. Scope this to *unchanged from what
-   this dispatch was handed*, never to "the stage had nothing to do":
-   § *Resume* skips a complete stage by its status marker, so a stage
-   with nothing to do is never dispatched at all. The likeliest instance
-   is the most damning — `dev-do`'s pre-flight gate refuses a non-empty
-   index and is forbidden to edit `plan.md` at all, so disk still reads
-   `Ready-to-execute` with every phase `Pending`, and without this
-   branch the rule to classify from disk makes a blocker this skill
-   already lists structurally undetectable.
+   A `readiness-blocked` reason instead preserves the prior work counter;
+   never count environment diagnostics as a failed stage or code attempt.
+2. **The artifact is byte-identical to the baseline** → first check
+   identity, readiness, and the known task's result. Reuse an unchanged
+   valid completed artifact; return a named safety/readiness refusal
+   immediately even if writes were forbidden. Never repeat a dirty-index
+   refusal just to obtain a better narrative.
 
-   **The first unchanged return earns one re-dispatch, not a hand-back.**
-   This is the least diagnosable outcome in the run: the stage wrote
-   nothing, so it also wrote no `- HANDBACK |` line, and disk therefore
-   records neither what it attempted nor why it stopped. That is
-   indistinguishable from a stage whose sub-agent never started, or one
-   that could not reach a tool its skill needs — both recoverable, and
-   both otherwise spending none of the three work attempts § *Retry and
-   Hand-Back* grants every stage.
-
-   **The retry is a diagnose-then-retry dispatch, never a bare one**, on
-   the reasoning that section already gives for a `Blocked` phase.
-   Alongside the five standard inputs, a retry dispatch hands the stage
-   sub-agent:
-
-   - **the fact that its previous dispatch left the artifact
-     byte-identical**, named as such, with that artifact's absolute path;
-   - **an instruction to diagnose the cause first** — a safety gate it
-     refused, an input that was absent, a tool it could not reach — and
-     only then to proceed;
-   - **an instruction to state what it found explicitly in what it
-     returns**, even when it still cannot write. A stage that refuses
-     again for a reason it *names* converts the least diagnosable outcome
-     in the run into the most.
-
-   **A second consecutive unchanged return is the blocker.** Hand back,
-   name both dispatches, and quote whatever the retry reported — that
-   text is the only account of the failure that exists, because nothing
-   reached disk.
-
-   This costs `dev-do`'s pre-flight refusal one extra dispatch, and buys
-   a refusal that *says* the index was dirty in place of a silent return
-   that looks like every other unchanged one. That is the better trade,
-   not a reluctant one.
+   For an unexplained unchanged return, obtain new diagnostic evidence
+   from the known task result or a bounded read-only probe. Retry at most
+   once, only after a changed prerequisite or new evidence establishes a
+   safe different action. Hand the fresh runner the prior output path,
+   diagnosis, changed input/evidence, and exact resume step. No such
+   evidence → hand back, naming the uncertainty; a second unchanged
+   return → hand back with both results. Report undurable diagnostics
+   honestly. Do not infer success from unchanged bytes or a narrative.
 3. **An authoring stage** is judged by re-reading the artifact's `Status`
    row.
 4. **The plan stage** is judged by re-reading `plan.md`'s `Status` row.
 5. **The execution stage** is judged phase by phase: top-level
-   `Status: Complete` with every phase `Complete` → advance; any phase
-   marked `Blocked` → the diagnose-then-resume path in § *Retry and
-   Hand-Back*; phases still `Pending` with no `Blocked` marker → the
-   stage yielded early, so re-dispatch it to continue.
+   `Status: Complete` with every phase `Complete` and current passed
+   final evidence under `dev-do` § *Final Verification State* → advance;
+   stale, invalidated, or unknown final evidence → re-enter `dev-do`
+   for final-only recovery, never phase replay. A top-level `Blocked`
+   plan with all phases complete also resumes final verification.
+   Any phase marked `Blocked` → the diagnose-then-resume path in
+   § *Retry and Hand-Back*. Phases still `Pending` with no `Blocked`
+   marker → the stage yielded early, so re-dispatch it to continue.
 
-A stage that yields **without** a `- HANDBACK |` line was either
+A stage that yields **without** a `- HANDBACK |` line may have been
 forbidden to write or had nowhere yet to write to; both carve-outs are
 named in § *The Standing Directive*, and both are why that line's
 absence never proves success. Branch 2 is what catches them.
@@ -437,61 +506,27 @@ its own artifact as settled content. It does not ask. This covers:
 - **`dev-plan`'s open decisions** — the ones its workflow would
   otherwise put to the user because the choice materially changes the
   work.
-- **`dev-approach`'s triviality decision.** Apply that skill's own
-  four-part test, and **fan out on any doubt**. The source is trivial
-  only when **all four** hold: it is confined to a single file, it adds
-  no new component, it changes no public interface, and it implies no
-  choice a reasonable engineer would argue about. All four → collapse to
-  one approach. Any one of them false, or any one you cannot establish
-  from the source → run all three authors.
-
-  **The conjunction is the safety mechanism, and "cannot establish"
-  counts as false.** A source that does not say what it touches has not
-  passed the first clause; it has failed to answer it, and an unattended
-  run has nobody to ask. Treating silence as a pass is how this
-  degenerates into collapsing everything.
-
-  Do not read this as licence to reason your way to trivial. The four
-  clauses are facts about the source, not a judgment about the work's
-  size: a one-line change that alters a public interface is **not**
-  trivial, and neither is a small change that picks between two designs.
-  If you find yourself arguing for why a clause "basically" holds, it
-  does not, and that argument is itself the choice a reasonable engineer
-  would argue about.
-
-  **Record the decision and which clause decided it** as an assumption
-  like any other — the ledger line goes in `approach.md`'s `## Notes`,
-  in the form *The durable record* prescribes below, written by the
-  approach stage itself, and it is reported at the close per § *The
-  Assumption Ledger*. That record is what replaces the user's opt-out:
-  the skill's
-  attended form states the call and lets the user redirect, and an
-  unattended run cannot be redirected, so the call has to be auditable
-  after the fact instead.
-
-  This is deliberately narrower than the blanket fan-out this directive
-  used to require. That rule was written when the triviality call was a
-  held view, which nobody can audit after the fact; against a
-  conjunctive test over facts on the page, an unattended run evaluates
-  the clauses as reliably as an attended one, and the record makes a
-  wrong call visible in the slot. The asymmetry that motivated the old
-  rule still governs the tie-break — an unnecessary fan-out costs three
-  sub-agents, a wrongly collapsed one costs the decision the stage
-  exists to make — which is why doubt resolves to fanning out and never
-  to collapsing.
+- **Workflow routing.** Apply § *Workflow Routing* before commissioning
+  options, and `dev-approach`'s own check when that stage runs. Record
+  the route and evidence as an assumption in the owning artifact.
+  Honor explicitly requested alternatives; material uncertainty selects
+  the more scrutinized route. No automatic answer grants authority to
+  enlarge scope or relax a safety gate.
 - **`dev-approach` § *Re-Invocation Modes*,** which stops and asks
-  whenever the slot already holds any `approach*.md`. That fires on
-  **every resume into a partly-finished approach stage**, so it must be
-  answered rather than waited on. Default: **`judge-only`** when all
-  three author files exist and are current with the source, and
-  **`regenerate`** when they are missing or stale.
+  for an explicit revision or changed inputs. Ordinary interrupted work
+  resumes only missing/invalidated outputs; do not regenerate completed
+  current authors. Default to `judge-only` when the expected candidate
+  set (A only in collapsed mode) is current and judgment needs revision.
+  Revise only affected authors when inputs change.
 - **`dev-approach` § *User Override*'s** disagree-with-the-judge offer.
   Default: **accept the judge.** The run has no standing to overrule a
   verdict it just commissioned.
 - **`dev-review`'s scope prompt**, in the case where it fires at all. It
   does not fire when `plan-slot` scope resolves.
 - **An authoring stage advances `Status` to Ready-for-plan once no open
-  question remains.** Leaving the row at `Draft` or `Refining` with
+  material question remains and its product contract is settled.**
+  Record automatic contract acceptance as `assumption`, never `user`.
+  Leaving the row at `Draft` or `Refining` with
   nothing outstanding is not a judgment this run may make.
   `dev-request` § *Closing* says plainly that answering every question
   does not by itself advance `Status`, so without this rule a stage can
@@ -514,8 +549,9 @@ behalf.** Keep the skill's ordinary questions, including:
 - `dev-review`'s scope question, when `plan-slot` scope cannot resolve.
 
 **Confirm the selected approach before planning**, including a collapsed
-selection. Present the actual approaches as at most three options,
-recommend the judge's winner with its comparative justification, and let
+selection, when the route uses one. A source-only route has no selection
+confirmation to invent. Present the actual approaches as at most three
+options, recommend the judge's winner comparatively, and let
 the user accept it, select an alternative, or respond freely. Record an
 alternative through `dev-approach`'s existing `## Override` contract;
 never rewrite the judge's verdict. Obtain the user's reason if it was
@@ -675,6 +711,10 @@ artifact:
 - HANDBACK | stage: <stage> | attempt <k> | <reason>
 ```
 
+For readiness refusals, prefix the reason `readiness-blocked:` and retain
+the prior work-attempt count. Keep this diagnostic out of the three work
+attempts; only work failures advance that counter.
+
 All follow the labelled-entry convention `plan.md`'s `## Progress Log`
 already uses, **including the leading `- `**. All go in a named section
 of the stage's own artifact:
@@ -710,8 +750,9 @@ do not claim they will survive a new session.
   editing `plan.md` at all. The never-overridden rule wins — this
   directive never buys a write past a safety gate, and obeying it here
   would mean writing to a plan on a dirty tree, which is exactly what
-  that gate exists to prevent. The byte-identical branch in § *Stage
-  Dispatch* is what catches this outcome instead.
+  that gate exists to prevent. Return a named readiness/safety refusal;
+  the byte-identical branch in § *Stage Dispatch* hands it back without
+  an unchanged-input retry.
 - **A stage whose artifact does not yet exist has nowhere to write.**
   `dev-request` can yield before `featurerequest.md` exists, `dev-plan`
   before `plan.md`, and `dev-review` writes `review.md` wholesale at
@@ -731,10 +772,11 @@ wholesale by the skill that owns them.**
   pending question, or hand-back it *does* write must be **re-emitted**
   by the next pass, unless that pending question has since been settled.
   That keeps an overwrite from destroying the record.
-- **Every `dev-approach` mode rewrites `approach.md`.** That skill
+- **Every `dev-approach` rejudgment rewrites `approach.md`.** That skill
   preserves the section its lines live in across a rewrite, which is
   what gives this stage's decisions and pending questions a home
-  surviving both a re-judgment and a hand-back.
+  surviving both a re-judgment and a hand-back. Retirement instead
+  preserves the judgment and appends its owner's retirement record.
 
 ## The Assumption Ledger
 
@@ -771,10 +813,11 @@ the assumptions, with their artifact locations, and read pending
 assumption as user-approved merely because the run resumes interactively,
 or discard user decisions when it resumes automatically.
 
-In `automatic`, this is the closing report's most prominent section.
-In either mode, the assumption ledger is never summarized away, never
-truncated, and never folded into a sentence about how the run "made some
-assumptions along the way".
+Keep the complete ledger in its owning artifacts. In either mode, link
+each artifact/section and report material decisions, counts, pending
+questions, and unresolved safety constraints. Do not copy entire ledgers
+into every prompt or handoff, or hide decisions behind a vague statement
+that the run "made some assumptions". Durable links preserve the detail.
 
 ## Resume
 
@@ -782,8 +825,9 @@ A re-invocation with the same arguments **resumes**; it needs no resume
 flag. The optional `mode` still defaults to `automatic` when omitted.
 An explicitly changed mode applies to remaining decisions, not to work
 already completed. Pick up at the first incomplete stage,
-judged by **status markers, never by file presence** — a file that
-exists proves a stage started, not that it finished.
+judged by **status plus validated input identity, never file presence**.
+A file proves a stage started, not that it finished or remains current.
+Apply § *Stage Identity* before skipping or dispatching it.
 
 **Pending user input takes precedence over readiness markers.** Read
 `QUESTION` lines first and return to the owning stage's recorded step,
@@ -805,14 +849,20 @@ applies, ask again rather than infer consent.
 - **Authoring** is complete when the request's or report's `Status` row
   reads `Ready-for-plan`.
 - **Approach** is complete when `approach.md` exists and carries a
-  `## Selected` section.
+  current active `## Selected` section matching the contract and
+  candidate set. On a source-only route, a historical decision instead
+  requires current retirement evidence under `dev-approach`
+  § *Retiring a Decision*; no approach is required if none ever started.
 - **Plan** is incomplete **only** when the `Status` row of `plan.md`
   reads `Draft`; any other value means the plan stage is done. One
   value, no ordering claim, and nothing to rot when `dev-plan` gains a
   status — where "`Ready-to-execute` or a later value" would assert an
   ordering that `Blocked` has no position in.
 - **Execution** is complete when the plan's top-level `Status` reads
-  `Complete` **and** every phase's `**Status:**` reads `Complete`.
+  `Complete`, every phase's `**Status:**` reads `Complete`, and current
+  final evidence passes `dev-do` § *Final Verification State*. On
+  invalidation or uncertainty, resume that execution owner's final-only
+  path without reopening implementation or editing its artifact.
 - **Review tail** progress is the highest `<k>` carried by a
   `- REVIEW | iteration: <k> | complete` marker in `plan.md`'s
   `## Progress Log` — see § *The Review Tail*.
@@ -831,6 +881,13 @@ left no line at all; say so rather than reporting a clean history.
 
 ## Retry and Hand-Back
 
+**Readiness failures never spend code attempts.** Classify environment,
+permission, and capability recovery separately as `readiness-blocked`.
+Apply `dev-do` § *Readiness Gate*: changed prerequisites or new diagnostic
+evidence are required before retry, and only affected checks rerun.
+No new evidence means one bounded handback, not a repeated dispatch.
+Undocumented commands and unexplained failures remain blockers.
+
 **A failing phase gets three attempts in total — the first, plus two
 retries.** The counter is **per phase**, not per stage, so one stubborn
 phase cannot spend a long plan's whole budget. The bound is internal and
@@ -844,19 +901,22 @@ it counts nothing at all for a stage that yields early, hands back
 without a `Blocked` marker, or returns unchanged — and those are exactly
 the cases a re-dispatch loop is made of. Count work attempts per stage,
 across resumes, using the `attempt <k>` on that stage's `- HANDBACK |`
-line; a stage that exhausts three is a blocker. An interactive question
+line for work failures, not `readiness-blocked` diagnostics; a stage that
+exhausts three is a blocker. An interactive question
 and its answer continuations belong to the same attempt, even when the
 host needs a fresh runner to continue it. Three questions must never
 exhaust a stage's failure budget.
 
-**An unchanged-artifact retry spends one of those three work attempts.** It
-opens no fourth counter: § *Stage Dispatch* bounds it at one retry, and
-that retry starts a new work attempt. The count has one honest limit
+**An eligible unchanged-artifact work retry spends one work attempt.** It
+opens no fourth counter: § *Stage Dispatch* bounds it at one retry,
+requires changed inputs or new evidence, and that work retry starts a
+new attempt. A readiness diagnostic is not a work retry. The count has
+one honest limit
 — an unchanged return writes no `- HANDBACK |` line, so nothing records
 it on disk and the tally is **in-session only**. A run resumed tomorrow
-starts that stage's unchanged count at zero and may therefore repeat the
-one retry. Bounded, cheap, and undurable: report it as undurable, in the
-register the second carve-out in § *The Standing Directive* already
+cannot recover that count; it must still establish changed prerequisites
+or new evidence before any retry. Report the missing history as undurable,
+in the register the second carve-out in § *The Standing Directive* already
 uses, rather than implying a count that survived the session.
 
 **A retry is a diagnose-then-resume dispatch, never a bare
@@ -897,11 +957,10 @@ blockers:
 - a failure the run cannot explain;
 - a repository state it cannot safely act on, including anything
   `dev-do`'s pre-flight gate refuses;
-- a stage that returns without pending user input and with its artifact
-  byte-identical to the baseline recorded before the dispatch, on **two
-  consecutive dispatches** — the first such return earns the
-  diagnose-then-retry in § *Stage Dispatch*
-  instead;
+- an unexplained unchanged stage return without new diagnostic evidence,
+  or a second unchanged return after the single evidence-justified retry
+  in § *Stage Dispatch*; a known safety/readiness refusal hands back on
+  its first return;
 - a `dev-do` **scope-exceeded yield** — non-overridable, marking nothing
   `Blocked` and requiring no `NOTE`, so nothing else in this list would
   catch it;
@@ -909,8 +968,8 @@ blockers:
 - a missing stage skill file;
 - a change the run made to **this** skill.
 
-**On hand-back, report:** the stage and the phase, the attempts and what
-each one tried, the evidence, the ledger rebuilt so far, whether the
+**On hand-back, report:** the stage and phase, attempts and what each
+tried, evidence and decision-record links, whether the
 stage's own `- HANDBACK |` line reached disk or the hand-back was
 undurable, and **the exact command that resumes the run**. Quote that
 command in **full-path form**, never as a bare slot number — a number
@@ -927,7 +986,10 @@ failure attempt while the user decides, asks questions, or edits.
 ## The Review Tail
 
 One **iteration** is a `dev-review` pass **plus** remediation of what it
-raised. `review_iterations` counts iterations, not passes.
+raised. `review_iterations` is a ceiling, not a target. Stop after the
+first cycle unless new material findings, a stated risk, or requested
+depth justify another; record that reason in the owning stage's notes.
+Never suppress standing findings to meet a budget.
 
 **Scope resolves itself.** `dev-review` derives `plan-slot` scope from
 the plan's `COMMIT` entries without asking. When the plan carries **no**
@@ -994,15 +1056,41 @@ invented to disambiguate. The form is a fourth labelled entry in a log
 `dev-plan` owns and documents, so it extends *that* skill's vocabulary
 and changes nothing about `dev-do`'s.
 
-**`dev-review` overwrites `review.md` on every pass.** With
-`review_iterations: 2` the surviving file is the second pass's. That is
-`dev-review`'s documented behavior and is not changed here — say in the
+**`dev-review` overwrites `review.md` on each justified new pass.** If
+two iterations actually run, the surviving file is the second pass's.
+That is `dev-review`'s documented behavior — say in the
 closing report which iteration the file reflects.
 
 **Any finding still standing when the budget runs out is reported**
 alongside the ledger, and just as prominently. Exhausting the iteration
 budget is not a failure and not a hand-back; it is a result the user
 reviews.
+
+## Local Efficiency Record
+
+**Measure only what the host actually exposes.** At task start and
+accepted handback, use supported private local session/task metadata to
+record stage identity, tier, start/end timestamps, acceptance status,
+input/output and cache-read/write tokens, AIU, event/agent counts, and
+summed model duration where available. Record tool waits, human waits,
+interruptions, and parallel overlap separately when observable; unknown
+clocks and counters remain `unavailable`, never zero or estimates.
+Do not treat summed parallel durations as elapsed time or a green run as
+user acceptance. A blocked or awaiting-user handback is not accepted.
+
+Store aggregate counters and IDs only, not prompts, secrets, or tool
+payloads. Do not add a telemetry dependency, new artifact, or invented
+cache toggle. Keep stable relevant instructions reusable, verify actual
+cache telemetry before any authorized cache-setting change, and never
+switch models based on unmatched usage aggregates. A routing/model
+change needs user approval and a matched quality/cost/time trial.
+
+Compare accepted tasks within the same repository, tier, scope/risk,
+and acceptance depth. Track duplicate stages, unchanged-input retries,
+authorized changed goals, missing evidence, and reopened High findings
+separately. Increasing context/cache writes trigger scope and handoff
+inspection, not evidence removal. Report unavailable measurements
+honestly; proposed savings are trial targets, not a completion claim.
 
 ## Progress Output
 
@@ -1031,23 +1119,28 @@ In this order:
 2. **The artifacts** — which ones exist, and one line on what each says.
 3. **The commits** the execution stage made, SHA and subject, in
    chronological order.
-4. **The assumption ledger** — every question the run answered on the
-   user's behalf, in full: one entry per question, with the stage, the
-   answer, the rationale, and where it landed. **This is the most
-   prominent part of an automatic run's report, and must not be
-   summarized away in either mode.** For automatic decisions this is the
-   user's review point. Say explicitly when no assumptions were made.
+4. **Decisions and evidence** — link the complete assumption ledger by
+   artifact and section, give counts and material decisions with their
+   rationale, and link readiness/validation receipts. Do not replay
+   whole ledgers. Say explicitly when no assumptions were made.
 5. **User decisions and pending questions** — report actual user answers
    separately, where the owning stages recorded them, and anything left
    unanswered. Never count a skipped question as an approval.
 6. **Standing findings** — anything `dev-review` raised that the
    iteration budget did not close, at the same prominence as the
-   ledger, plus which iteration the surviving `review.md` reflects —
+   decisions, plus which iteration the surviving `review.md` reflects —
    or state that the review tail did not run, and why.
 7. **Next steps**, named as available to the **user** and never
    performed: `dev-issue` to publish the request or report and attach
    the plan, `dev-pr-open` to push the branch and open the pull request.
    State plainly that nothing was pushed and no pull request was opened.
+
+Use the compact eight-field handoff in `dev-do` § *Evidence Receipts*
+for interrupted/blocked runs. Include the exact full-path resume command,
+what remains valid, and one next permitted unblock action. Link detailed
+history instead of repeating it; keep unresolved safety constraints
+explicit. Include available local aggregate metrics without claiming
+unmeasured savings.
 
 ## Important Rules
 

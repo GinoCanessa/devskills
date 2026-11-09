@@ -20,7 +20,8 @@ a `featurerequest.md` or `bugreport.md` as a GitHub issue, binds the slot to
 it, and can later attach the finished `plan.md` as a managed comment.
 `dev-pr-open` is the terminal step that pushes the branch and opens the PR.
 `dev-complete` runs the authoring chain end to end for you — `dev-approach`
-is optional when you drive the loop by hand, and mandatory inside a run.
+runs for contested architecture or explicitly requested alternatives,
+not automatically for settled maintenance or bounded implementation.
 Its `automatic` mode answers stage questions for you; `interactive` brings
 them to you while still orchestrating every step.
 
@@ -168,14 +169,14 @@ dev-complete 1 report gh#412 mode: automatic
 dev-complete 1 request "Add a --dry-run flag to the export command" mode: interactive
 ```
 
-`dev-complete` runs `dev-request` / `dev-report` → `dev-approach` →
+`dev-complete` runs `dev-request` / `dev-report` → optional `dev-approach` →
 `dev-plan` → `dev-do`, then a `dev-review` remediation tail. Choose how it
 handles decisions:
 
 - **`automatic` (default):** the existing fully automated behavior. It
   answers stage questions, records assumptions in each stage's own
-  artifact, and reports every one at the close. Questions do not pause
-  the run; genuine blockers do.
+  artifact, and links the full decision record at the close. Questions do
+  not pause the run; genuine blockers do.
 - **`interactive`:** the same orchestration, with request/report and plan
   questions brought to you, plus confirmation of the selected approach
   and the plan before execution, including remediation work. Each prompt
@@ -188,10 +189,73 @@ handles decisions:
 Both modes commit locally, never publish to GitHub, push, or open a PR,
 and preserve the same safety gates. Optional `max_subagents` defaults to
 `3`; `review_iterations` defaults to `1`, and `0` skips the review tail.
+It is a ceiling, not a target: additional cycles need a new material
+finding, stated risk, or explicit request.
 Resume with the reported full-path command, which includes the mode and
 budgets. Omitting `mode` always means `automatic`, even on resume.
 Interactive mode does not add per-phase checkpoints; use `dev-do`'s
 `checkpoint_every` input in the unchanged hand-driven loop for those.
+
+### Readiness, routing, and resumable evidence
+
+Before commissioning authors, running tool-dependent planning probes,
+or implementing, the loop checks only relevant prerequisites read-only:
+checkout and owned/dirty paths, locally resolved tools and pin policy,
+generated-path validity, platform capabilities, and permissions.
+`readiness-blocked` is separate from code failure. Unchanged environment
+failures earn no repeated attempt; tool installation, policy changes,
+and generated-cache resets still need applicable authorization.
+
+Intake freezes six short product-contract fields: deliverable, actors
+and side-effect ownership, execution semantics, exact window/baseline,
+preservation constraints, and limits/exclusions. Known answers are filled
+directly; only material gaps need questions. Authors and judges use the
+same revision. Changed goals append a dated delta naming superseded
+decisions, rather than silently mixing scopes.
+Standalone execution also compares the current settled source contract
+with the plan before writes, recovery, or completion reuse; stale or
+unknown identity returns to the owning intake/planning skill.
+
+Settled maintenance uses its direct owner and focused checks. Bounded
+implementation uses phases and one final independent review cycle by
+default. Contested architecture or requested alternatives use isolated
+authors and a judge. Explicit review depth takes precedence; routing
+does not weaken the clean-index, ownership, phase-commit, or final gates.
+
+Resume compares repository/slot/stage identity, baseline, source/decision
+fingerprints, status, readiness, and known owner/task handle. It reuses
+unchanged valid work and revises only affected sections. A delayed reply
+or explanation request is not permission for duplicate authoring.
+Changed code, dependencies, scope, platform, or permissions require a
+targeted staleness assessment even when source hashes match.
+Retired selections remain readable, but only a current owner-recorded
+retirement permits source-only planning around historical approach files.
+Invalidated final evidence resumes final verification alone, preserving
+completed phases and commits; `Complete` by itself is not current proof.
+
+Handoffs link durable evidence instead of replaying full ledgers.
+Validation receipts bind commands/selectors, revision or relevant-input
+fingerprint, tool/dependency versions, platform, time, results/skips,
+and limitations. Valid same-input results can be reused; required final
+and cross-platform gates remain. Local aggregate usage/timing is recorded
+only where exposed by the host; missing clocks stay unknown. No cache
+toggle, model switch, or measured savings is inferred from aggregates.
+These inspection notes do not activate the separate owner-sealed
+`handoff-v1` reference or grant publishing authority.
+Bug reports use repository-relative paths and safe service IDs/routes.
+Exact sensitive or outside locations stay in private diagnostics;
+quoted evidence marks necessary redactions instead of leaking roots.
+
+**Pilot targets, not proven savings:** use the next ten comparable tasks
+to check readiness receipts before every edit, zero unchanged-input
+environment retries or duplicate plan rewrites, and no increase in
+reopened High findings or missing acceptance evidence. Compare median
+input tokens and summed model duration (20% reduction target), and cache
+writes (10% target), separately from true elapsed time. Missing telemetry
+stays unknown. On the next three architecture tasks, verify the accepted
+contract precedes alternatives and scope deltas retain their cause.
+Narrow over-checking or restore review depth if quality regresses; never
+remove preservation, authorization, or evidence to meet a target.
 
 **Both `dev-pr-open` modes require complete, verified non-shallow
 history.** A successful `git rev-parse --is-shallow-repository` result
@@ -332,9 +396,12 @@ are never cheapened — a critique that misses a Blocker costs more than it
 saved. An absent table means `uniform`, so repos predating this behave
 exactly as they did.
 
-Two related knobs: `max_subagents` (default 3) caps *concurrency*, and
-`dev-review` measures the scope first — below 5 changed files and 200
-changed lines it runs both passes in-process and spawns nothing at all.
+Two related controls: `max_subagents` (default 3) caps *concurrency*, not
+total spend, and `dev-review` measures scope before dispatch. Below 5
+changed files **and** 200 changed lines, one independent
+`dev-change-reviewer` runs both passes; larger scopes use separate
+Engineering and QA roles. The parent synthesizes, not repeats, their
+investigations. Extra critiques and review cycles need a stated reason.
 
 ## GitHub integration (opt-in)
 

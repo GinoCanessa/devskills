@@ -72,12 +72,26 @@ skill. It writes four files into the slot — `approach-a.md`,
 three are competing solution shapes and the fourth is a judge's
 selection among them.
 
-**When `approach.md` is present**, it is the **decided shape**. Plan
+**When `approach.md` is present**, first check its decision status.
+A missing status row in a legacy file means active, not retired.
+For `Decision status: retired`, require the latest retirement record
+under `dev-approach` § *Retiring a Decision* to match the current settled
+source revision/fingerprint and source-only route. Preserve the artifacts
+read-only and plan directly from the source without another approach
+offer. Record `n/a (retired selection retained)` in the plan's Approach
+row; stale or incomplete retirement returns to its owner, never an
+implicit bypass. An active selection is the **decided shape**. Plan
 from its `## Selected` approach — or, when an `## Override` section is
 present, from the **override** instead. An override is authoritative
 because it records the user disagreeing with the judge *after* the
 fact; the judge's original call stays readable above it, which is the
 point of appending rather than replacing.
+
+Require a completed `## Selected` section or valid override, not an
+unfinished skeleton. Compare its source contract revision and recorded
+input/candidate fingerprints with the current source. A stale selection
+returns to `dev-approach` for targeted completion or revision; never plan
+from a presence-only or mismatched decision.
 
 - `## Approach` in `plan.md` becomes a **recap** of the selected shape,
   and `## Alternatives Considered` becomes a **citation of the judge's
@@ -118,15 +132,25 @@ degraded one.
 1. **Resolve paths.** Determine source path and `plan.md` path. Echo
    both.
 2. **Read the source** in full. Read `plan.md` too if it exists.
+   Before new or revised planned work, require its settled product
+   contract under `dev-request` § *Product Contract*. A legacy contract
+   needs current source-owner revalidation, not invented acceptance.
+   Preserve existing execution history while that targeted update waits.
+2.25. **Check identity and staleness before authoring.** Follow
+   § *Resumable Planning*. Unchanged valid work is reused, not rewritten.
 2.5. **Check for a sibling `approach.md`** and follow § *Planning From
-   an Approach*. Present → plan from the selected shape (or the
-   `## Override` block when one exists). Absent → offer
+   an Approach*. Active → use the selected shape or valid override.
+   Retired with current owner evidence → plan from the source.
+   Absent → offer
    `dev-approach <slot>` once, then proceed either way.
 3. **Read `AGENTS.md`** at the repository root. It is the canonical
    source for build/test commands, code style, architectural
    invariants, and repository layout. If it is absent, fall back to
    `README.md` / `CONTRIBUTING.md` and state in your output which
    source you used. **Never invent a build or test command.**
+   Before a tool-dependent probe, apply `dev-do` § *Readiness Gate*.
+   Record a permitted receipt in *Notes*; stop on a missing prerequisite
+   rather than attempting environment recovery as planning work.
 4. **Ground the plan in the code.** Identify the affected project(s)
    before naming commands, and use code-intelligence tools
    (LSP / grep / view) to inspect the relevant implementation and test
@@ -144,16 +168,17 @@ degraded one.
    disagreement for `dev-issue` to resolve. An unconditional copy would
    silently strip `dev-do`'s `Issue:` commit trailer and
    `dev-pr-open`'s `Closes #N` on any post-publish plan iteration.
-7. **Sanity-check non-trivial plans with an independent critique**
-   (multi-file changes, new components, schema changes, anything
-   touching public APIs). Use the `rubber-duck` agent, or a registered
-   review specialist when one is available; fall back to a
+7. **Reserve an independent planning critique for contested or high-risk
+   choices, or an explicit user request.** Settled maintenance and
+   bounded implementation use focused checks and the final independent
+   review, not a second review merely because several files change.
+   Record the tier and reason in *Notes*. Use the `rubber-duck` agent or
+   a registered review specialist when one is available; fall back to a
    `general-purpose` sub-agent explicitly prompted to act as an
-   adversarial reviewer only where neither exists. A single-file plan
-   with no new component, no schema change, and no public-API change is
-   **trivial** and skips this step — say that you skipped it and why.
-   Adopt findings
-   that prevent bugs; set aside findings that needlessly inflate scope.
+   adversarial reviewer only where neither exists. Give it a bounded
+   question, baseline, evidence target, permitted effects, and stop
+   condition; do not repeat its investigation. Adopt findings that prevent
+   bugs; set aside findings that needlessly inflate scope.
    Briefly summarize what changed as a result.
 8. **Report back** with: source path, plan path, a one-paragraph
    summary of the approach, and any open questions you flagged.
@@ -173,6 +198,54 @@ degraded one.
     integration is off, or the section is absent, say nothing about
     GitHub at all.
 
+## Resumable Planning
+
+**Compare inputs, status, and ownership before a write or dispatch.**
+Identify the repository root, dated slot, planning stage (including a
+remediation iteration), baseline commit, source contract revision and
+source/decision fingerprints. Read the existing plan's *Notes*, statuses,
+pending decisions, and available task handle. A delayed reply or a
+clarification request is not permission to start a second author.
+
+If a known task is active, use its continuation/completion path. If its
+ownership cannot be established, require an explicit owner handoff,
+not a guessed replacement. On an unchanged ready plan with still-valid
+readiness and evidence, report reuse without editing it or repeating a
+critique. Reconstruct missing legacy fingerprints by current inspection;
+never claim they prove what an earlier run observed.
+
+For a changed criterion, revise only that section and directly dependent
+steps. Assess changes to code, dependencies, scope, permissions, and
+platform even if the source hash matches. A hash is a staleness signal,
+not proof that evidence or approvals remain valid. Preserve execution
+history, valid evidence, and unaffected decisions; do not rerun an
+approach contest to clarify one verification criterion.
+
+When revised final criteria or relevant inputs invalidate completion,
+append a `Final verification invalidation` request in *Notes*, naming
+the change and reason. Preserve execution-owned statuses and receipts;
+`dev-do` § *Final Verification State* owns that final-only transition.
+Do not reopen completed implementation phases just to rerun verification,
+or treat an old `Complete` row as
+assurance that revised criteria passed.
+
+Record a compact stage entry in *Notes* on the first permitted write and
+on lifecycle changes: repository identity digest, repository-relative
+slot, stage, baseline, input fingerprints, contract revision, owner role
+and public-safe task handle (or `unavailable`), and `active`,
+`awaiting-user`,
+`readiness-blocked`, `blocked`, or `complete`. Keep absolute roots and
+private handles in supported local session metadata, not publishable
+plan text. This is a planning note, not a `handoff-v1` seal. Reuse does
+not require rewriting a valid artifact just to refresh this note.
+
+**Lead decisions with the failure.** Give one concrete user-visible
+example, its impact, concise options, and a recommendation before
+specialized terminology. Honor one-at-a-time decision mode and record
+actual approvals separately from assumptions. On interruption, name the
+exact artifact/stage, still-valid evidence, one blocker, and next
+permitted action using `dev-do` § *Evidence Receipts*.
+
 ## Plan Format
 
 ```markdown
@@ -180,13 +253,15 @@ degraded one.
 
 | | |
 |-|-|
-| Slot | `scratch/<MMDD>-<##>/` (or full path) |
+| Slot | {repository-relative slot path} |
 | Source | `featurerequest.md` / `bugreport.md` (read-only) |
-| Approach | `approach.md` (selected: {A\|B\|C}) — or `n/a` |
+| Approach | `approach.md` (selected: {A\|B\|C}) — or `n/a` (including a retained retired selection) |
 | Issue | [#N](<url>) — or `not published` |
 | Status | Draft / Ready-to-execute / In-progress / Complete / Blocked |
 | Created | {YYYY-MM-DD} |
 | Last updated | {YYYY-MM-DD} |
+| Contract revision | {source Rn and fingerprint; legacy: revalidate} |
+| Workflow tier | settled maintenance / bounded implementation / contested architecture |
 
 ## Problem Recap
 
@@ -198,20 +273,20 @@ self-contained. Do not paste the source; summarize.}
 {The chosen approach in one paragraph. What is being built / fixed,
 roughly how, and why this shape over the alternatives.
 
-When a sibling `approach.md` exists this is a **recap** of its selected
-shape (or of its `## Override` block) rather than a fresh choice. When
-none exists it is your own choice, as always. Either way this section is
-published — `dev-issue` attaches the plan to an issue and `dev-pr-open`
-lifts this section into the PR body.}
+When a sibling active `approach.md` exists this is a **recap** of its
+selected shape (or of its `## Override` block), not a fresh choice.
+When none is active it is your own choice, as always. Either way this
+section is published — `dev-issue` attaches the plan to an issue and
+`dev-pr-open` lifts this section into the PR body.}
 
 ## Alternatives Considered
 
 - **{Alt A}** — {one-line description}. Rejected because {reason}.
 - **{Alt B}** — {one-line description}. Rejected because {reason}.
 
-{When a sibling `approach.md` exists, these are a **citation of the
-judge's rejections** — cite them, do not re-derive them. When none
-exists, they are the alternatives you weighed yourself.}
+{For an active sibling selection these are a **citation of the judge's
+rejections** - cite them, do not re-derive them. Otherwise they are the
+alternatives you weighed against the current source.}
 
 ## Affected Areas
 
@@ -313,6 +388,12 @@ this section. Never delete or rewrite an existing `COMMIT` or `NOTE` entry.}
 ## Notes
 
 {Free-form. Links to docs, prior art, related plans.}
+
+{Record stage identity, routing reason, readiness and validation receipt
+references here. Preserve prior execution history on targeted revisions.
+Seed new plans with final verification pending. On a revision, append a
+Final verification invalidation request when needed; only dev-do records
+subsequent final execution state and results.}
 ```
 
 ## Sub-Agent Model Tier
@@ -328,11 +409,11 @@ spawning agent's model.
 | Surveying an unfamiliar area the plan will touch | mechanical | `explore` |
 | Confirming a command or path the plan cites actually exists | mechanical | `explore` |
 
-Planning is the skill that fans out least, and it should stay that way:
-you author the plan yourself. The critique in the Workflow's step 7 is
-the one dispatch that earns its keep, and a trivial plan skips even
-that. Everything else here is discovery, which the built-in `explore`
-agent already runs on a lightweight model.
+You author the plan yourself. Step 7 commissions a critique only for
+contested/high-risk choices or requested depth, not every multi-file
+plan. Delegate discovery only for a substantial independent question;
+give it a bounded scope and integrate its evidence rather than repeating
+the same trace in the caller.
 
 ## Iteration Mode
 
@@ -346,6 +427,8 @@ When `plan.md` already exists:
 - If the user's new input invalidates a Complete phase, surface that
   clearly in your response and propose a new phase to undo/redo it
   rather than rewriting history.
+- If only final verification is invalidated, append the request under
+  § *Resumable Planning*; do not add an implementation phase.
 - If a sibling `review.md` (from `dev-review`) exists in the slot,
   read it. Its Blocker and High findings are valid input for a plan
   revision — fold them in as new remediation phases (with their own
@@ -454,8 +537,9 @@ Answering every question does not by itself advance `Status` — apply
 the same judgment you would on any other pass. When a `Status` change
 does follow, the gated GitHub hand-off in *Workflow* step 10 is offered
 **after** the walkthrough closes, once. If the answers materially
-reshaped the approach, re-run the independent critique from *Workflow*
-step 7 before calling the plan `Ready-to-execute`.
+reshaped the approach, reassess *Workflow* step 7's risk/depth trigger
+before calling the plan `Ready-to-execute`; do not repeat a critique for
+an unchanged shape or a single clarified verification criterion.
 
 ## Important Rules
 

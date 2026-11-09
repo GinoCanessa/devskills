@@ -257,6 +257,13 @@ mis-scoping before any expensive work happens.
      must be real. Never invent one.
    - Identify the affected project(s) so the commands you cite are
      correctly scoped.
+   - Consume compact artifact-linked handoffs under `dev-do` § *Evidence
+     Receipts*. Verify the receipts' input/platform/freshness limits;
+     do not request duplicate same-input runs merely to repeat green
+     evidence. Missing or stale evidence stays an explicit limitation.
+     Review roles remain read-only; a receipt grants no new tools.
+     For standalone start/handback, follow `dev-complete` § *Local
+     Efficiency Record* through available private session metadata only.
 4. **Measure the scope, then decide whether to fan out.** Count the
    changed files and changed lines **in the resolved scope**, using the
    form that scope actually needs:
@@ -322,15 +329,16 @@ mis-scoping before any expensive work happens.
    re-rank by severity, re-score the confidences you disagree with,
    apply the promotion gate in § *The confidence scale*, drop noise,
    write the final report using the format below.
-6. **Sanity-check** a report containing any Blocker, High, or
-   architecture-level recommendation with a registered review
+6. **Commission an extra sanity check only for a material uncertain
+   finding or risk, or explicitly requested depth.** A proven finding
+   does not need another context merely because its severity is high.
+   Name the disputed claim, evidence target, and stop condition; record
+   why the extra review is warranted. Use a registered review
    specialist when available. Otherwise use a `rubber-duck` agent, or a
    fresh `general-purpose` sub-agent explicitly prompted to act as an
    adversarial reviewer where `rubber-duck` is unavailable. A report with
-   **no Blocker, no High, and no architecture-level recommendation**
-   skips this step — there is no finding whose cost of being wrong
-   justifies the pass. An architecture-level recommendation triggers it
-   at any severity. Where several findings qualify, hand the checker the
+   no material uncertainty or requested extra depth skips this step.
+   Where several findings qualify, hand the checker the
    lowest-confidence ones first — a Blocker at 100 is not what this pass
    is for. Adopt critique findings that prevent miscommunication; set
    aside findings that bloat the report. Briefly note in your reply what
@@ -457,7 +465,9 @@ How these findings re-enter the loop:
 
 ## Notes
 
-{Free-form. Links to related plans, prior reviews, design docs.}
+{Free-form. Links to related plans, prior reviews, design docs, stage
+identity/lifecycle, routing reason, and valid evidence receipts.
+Preserve pending decisions and public-safe prior lifecycle records.}
 ```
 
 ## Sub-Agent Use
@@ -490,6 +500,12 @@ How these findings re-enter the loop:
   cannot distinguish `git diff` from a mutating command.
 - The synthesizer step is **always** done in-process, not delegated.
   You own the final ranking and recommendations.
+- **Bound every dispatch.** Give the resolved baseline, owned review
+  objective, evidence target, permitted read-only effects, and stop
+  condition, using artifact links rather than full ledgers. Integrate
+  the role's evidence without repeating its assigned investigation.
+  Additional review cycles require new material evidence, stated risk,
+  or an explicit user request, not merely remaining concurrency budget.
 - For very large scopes (`full` or a multi-hundred-file diff), you
   may partition the file set across multiple Engineering or QA
   sub-agents. If you do, give each sub-agent a **non-overlapping**
@@ -540,6 +556,11 @@ against a slot whose `review.md` already exists:
 - Treat it as a **re-review**. Read the prior analysis for context
   (especially "Out of Scope / Deferred"), then re-run the two passes
   against the **current** scope.
+  An ordinary conductor resume with unchanged valid scope, inputs, and
+  completed stage identity reuses the existing report; a delayed reply
+  or explanation request is not an explicit re-review. Check the known
+  owner/task before dispatch and preserve pending decisions and prior
+  lifecycle records in *Notes* on any justified replacement.
 - Overwrite `review.md` with the fresh report. Mention in your
   reply that you replaced it and call out any findings that have
   been **closed** since the prior analysis (with one-line evidence,
