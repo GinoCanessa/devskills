@@ -22,6 +22,8 @@ written first.
 - **Your output path** — the file you write, and the only file you write.
 - Optionally, the user's focus text.
 - The format your file must follow.
+- The frozen source contract revision and fingerprint, permitted
+  effects, evidence target, and stop condition.
 
 **Read the source and the repository's `AGENTS.md` yourself** — you are
 given paths, not text. `AGENTS.md` carries the conventions and the
@@ -33,6 +35,11 @@ nothing else.
 
 ## Rules
 
+- **Stay within the frozen product contract.** Read its six fields and
+  verify the supplied source identity before writing. Record that
+  revision and fingerprint in your output; report a mismatch or pending
+  material decision instead of designing against changed or guessed
+  scope. Do not enlarge a narrow unblock into a redesign.
 - **Commit to your axis.** You are not trying to produce the best
   approach overall; you are producing the best approach *under your
   constraint*. An author who hedges toward the middle turns three

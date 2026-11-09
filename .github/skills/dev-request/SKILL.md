@@ -103,6 +103,9 @@ summarize what's there, and ask what they want changed.
      the answer is reasonably inferable), or
    - Ask the user a **focused clarifying question** before writing
      (preferred when the answer materially changes scope).
+   Freeze the short product contract below before commissioning options.
+   Fill known answers directly; use `n/a` with a reason where a field
+   does not apply. Ask only unresolved questions that change the result.
 5. **Write the file** using the format below. Preserve any user-authored
    sections that don't conflict with your edits.
 6. **Report back** with: the resolved path, a one-paragraph summary of
@@ -110,6 +113,29 @@ summarize what's there, and ask what they want changed.
 7. **Offer the open-questions walkthrough** whenever the file's *Open
    Questions* section is non-empty — see § *Open Questions
    Walkthrough*.
+
+## Product Contract
+
+**Keep six fields short and revisioned.** Record the accepted deliverable;
+actors and side-effect owner; scheduled/incremental/batch semantics;
+exact window or baseline identity; compatibility and preservation
+constraints; exclusions and non-negotiable limits. Do not infer permission
+to apply, commit, publish, or recover another actor's work from permission
+to supply a plan or evidence.
+
+Mark the contract `pending` until material decisions are settled. Record
+acceptance provenance as `user` only for an actual user decision, or as
+`assumption` under an automatic standing directive; never conflate them.
+Known user instructions need no repeat confirmation. Pending material
+decisions prevent `Ready-for-plan` and downstream alternatives.
+
+**Append changed goals, do not erase them.** Increment the contract
+revision and append a dated delta in *Notes*: changed fields, reason,
+authority, superseded decisions and their prior revision. Retain their
+provenance and unaffected evidence. A clarification that changes no goal
+needs no new revision or rewrite. Separate a narrow safe unblock from
+future redesign; record deferred work with its owner and open questions,
+not as an unapproved expansion of this request.
 
 ## Report Format
 
@@ -123,6 +149,18 @@ summarize what's there, and ask what they want changed.
 | Status | Draft / Refining / Ready-for-plan |
 | Created | {YYYY-MM-DD} |
 | Last updated | {YYYY-MM-DD} |
+| Contract revision | R{n} — pending / user / assumption |
+
+## Product Contract
+
+| Field | Accepted constraint |
+|-|-|
+| Deliverable | {TBD: accepted result} |
+| Actors / side effects | {TBD: actor and owner of each side effect} |
+| Execution semantics | {TBD: scheduled, incremental, batch, or n/a} |
+| Window / baseline | {TBD: exact window or baseline identity, or n/a} |
+| Preservation | {TBD: compatibility and existing work to preserve} |
+| Limits / exclusions | {TBD: non-negotiable limits and exclusions} |
 
 ## Problem
 

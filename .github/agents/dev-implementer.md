@@ -19,6 +19,8 @@ and you are not reopening it.
 - The **files you own** for this dispatch. When siblings are running in
   parallel, they own different files, and the sets do not overlap.
 - Optionally, focus text or a constraint the caller wants honored.
+- The baseline and input identity, readiness/evidence references,
+  permitted effects, evidence target, and stop condition.
 
 **Read the repository's `AGENTS.md` yourself**, before you write
 anything, for conventions, architectural invariants, and the documented
@@ -41,6 +43,11 @@ cannot check against the file when the two disagree.
    rather than guessing at a build incantation.
 5. **Return** a summary: the files you changed, what you did in each, any
    command you ran and its result, and anything you could not do.
+   Return compact validation receipts under `dev-do`'s Evidence Receipts
+   contract: revision/tree or relevant-input digest, command/selectors,
+   tool/dependency versions, OS/target, timestamp, result/skips,
+   limitations, and durable evidence location. The caller can reuse a
+   valid same-input result rather than immediately repeating your run.
 
 ## Rules
 
@@ -54,6 +61,10 @@ cannot check against the file when the two disagree.
   the same breath — stop and report it rather than reaching for it. A
   sibling may own that file right now, and two implementers editing one
   file lose one of the two edits.
+- **Stop on changed readiness.** Preserve work and report one bounded
+  unblock action if tools, policy, permissions, generated paths, or
+  platform prerequisites no longer match the supplied receipt. Never
+  provision tools or reset caches as an unapproved implementation step.
 - **Match the surrounding code.** Conventions come from this repository,
   not from a preference imported from another one. Match the local
   comment density, naming, and idiom even where you would have chosen

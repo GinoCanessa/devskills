@@ -47,6 +47,25 @@ if that is constrained.}
 {TBD: if warnings are errors, say so here in its own subsection and name the
 only sanctioned suppressions.}
 
+### Read-only readiness
+
+- {TBD: sanctioned checkout-local tool/SDK resolution and version probes,
+  exact pin versus roll-forward/prerelease policy, and required native
+  tools for each build track; write n/a for unrelated tracks.}
+- {TBD: generated metadata/cache files that embed checkout roots, how to
+  inspect their path validity read-only, and what work must be preserved.}
+- {TBD: required host/client platforms, execution/privilege context,
+  endpoint/path diagnostics, and capability or permission constraints.}
+- **Do not provision to discover requirements.** Check only prerequisites
+  for the owned scope. Installation, pin-policy changes, elevation, and
+  generated-path resets need applicable authorization. A reset also needs
+  a resolved in-scope path, preservation decision, and explicit approval.
+- **Separate environment recovery from code failure.** Record
+  `readiness-blocked` and one bounded unblock action. Retry only after a
+  changed prerequisite or new diagnostic evidence; recheck affected
+  prerequisites, not unrelated tools. Never spend code-attempt budgets
+  on unchanged environment failures.
+
 ---
 
 ## Build
@@ -99,6 +118,12 @@ wrong.}
 
 **Prefer the smallest command that covers the change.** Escalate to the full
 suite only when the focused run indicates you need to.
+Combine related selectors in one sanctioned runner. Validation receipts
+record relevant-input identity (including uncommitted changes), command,
+selectors, tool/dependency versions, host/target platform, timestamp,
+result/skips, limitations, and durable evidence location. Reuse only when
+inputs and freshness remain valid; unknown or changed inputs invalidate
+reuse. Required final, deployment, and cross-platform gates still run.
 
 {TBD: document any gate that needs setup — hermetic caches, fixtures,
 environment variables, services — with the exact setup commands. A
@@ -276,6 +301,29 @@ An exploration carries no `Issue` binding.
 - Do not add new linting, building, or testing tooling without being asked.
 - Prefer the smallest targeted verification that covers the change; escalate
   to the full suite only when the targeted run indicates it is needed.
+- Freeze a short revisioned product contract before alternatives; preserve
+  dated goal deltas and distinguish user decisions from assumptions.
+  Standalone execution checks settled source/plan identity before writes
+  or completion reuse; stale or unknown identity returns to its owner.
+- Route settled maintenance to its direct owner, bounded implementation to
+  phases plus independent final review, and contested architecture or
+  requested alternatives to authors and a judge. Preserve safety gates;
+  extra review cycles need new evidence, stated risk, or an explicit
+  request.
+- Resume from existing status, relevant input fingerprints, and known
+  owner/task handles; do not duplicate active or unchanged completed stages.
+  Revise only affected sections and preserve execution history.
+  Retained retired decisions need current owner evidence before
+  source-only planning. Invalidated final evidence resumes final
+  verification without reopening completed implementation phases.
+- Link compact readiness/validation evidence instead of replaying ledgers.
+  Keep sensitive paths and any aggregate usage/timing in supported private
+  local session storage, never prompts or secrets. Missing measurements
+  remain unavailable; do not invent cache settings or switch models from
+  unmatched aggregates.
+- Use repository-relative paths and safe service IDs/routes in bug
+  reports. Keep exact sensitive or outside locations private and mark
+  necessary privacy redactions without otherwise rewriting evidence.
 - {TBD: repository-specific guardrails — ledger files that must stay
   current, directories that are off-limits, generated code that must not be
   hand-edited, external trees the agent is expected to consult.}

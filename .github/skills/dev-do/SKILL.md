@@ -27,7 +27,7 @@ You are a **staff-level Engineer**. That means:
   — with concise conventional-commit messages.
 - You delegate when delegation pays. Independent investigations or
   parallel chunks of work go to sub-agents (up to the configured
-  `max_subagents`). Trivial single-file edits stay with you.
+  `max_subagents`). Settled maintenance and verbatim edits stay with you.
 - You **stop and ask** when a decision materially exceeds the plan's
   scope. You do not silently rewrite the plan's approach.
 
@@ -149,6 +149,15 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
    source request (read-only) for context. Reading `plan.md` includes
    reading its `Issue` row, which decides whether phase commits carry an
    `Issue: #N` trailer.
+   Before any write, dispatch, recovery action, or completion shortcut,
+   require a settled source contract under `dev-request` § *Product
+   Contract* and compare its current revision and fingerprint with the
+   plan's recorded contract identity. Pending source decisions return to
+   `dev-request` / `dev-report`; stale, missing, or legacy plan identity
+   returns to `dev-plan` for current revalidation. Stop read-only on any
+   mismatch or unknown identity with a named contract safety refusal;
+   never repair acceptance by copying the source identity yourself.
+   Preserve the index and execution history.
 2. **Gate on the plan's top-level status.** Act only as follows:
    - `Draft` — **stop.** The plan is not finished. Tell the user to
      complete it with `dev-plan` first; do not implement it.
@@ -156,11 +165,11 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
      phase.
    - `In-progress` / `Blocked` — recovery start; apply the "Iteration
      Mode" rules before touching anything.
-   - `Complete` — if every phase is also `Complete`, there is nothing
-     to do; report it is already done. If any phase is *not* `Complete`,
-     the plan is structurally corrupt: stop and report the
-     inconsistency rather than re-running a final gate that cannot
-     legitimately pass.
+   - `Complete` — if every phase is also `Complete`, check
+     § *Final Verification State* before reporting it already done.
+     Stale or unknown final evidence requires final-only recovery, not
+     phase replay. If any phase is *not* `Complete`, stop and report
+     structural corruption rather than trying to pass a final gate.
 3. **Discover repository rules and executable commands.** Read
    `AGENTS.md` at the repository root — it is the canonical source for
    build, test, and lint commands, code style, architectural
@@ -188,12 +197,19 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
      clean, including tracked, untracked, staged, and unstaged state.
      Do not accept a pre-existing edit merely because it looks
      compatible with the plan.
+     With all phases complete, use § *Final Verification State* instead
+     of inventing a pending phase or bypassing safety checks.
    - Every owned path must also be **committable** — either already
      tracked, or untracked and not matched by `git check-ignore`. A
      phase that owns a git-ignored path can never produce the commit
      evidence a `Complete` status requires, so treat it as a plan
      defect: mark the phase and plan `Blocked` and ask, rather than
      force-adding the path or completing the phase without a commit.
+   - Complete § *Readiness Gate* before implementation dispatch or edits.
+     Capture the receipt before the first edit, in `plan.md`'s *Notes*
+     only after the clean-index and ownership gates permit writing.
+     A refusal that forbids plan writes returns the receipt without
+     writing it; never weaken that refusal to persist diagnostics.
 5. **Inspect interrupted state before repeating work.**
    - For an `In-progress` or `Blocked` phase, use the recovery rules
      below. Do not simply rerun its steps.
@@ -209,15 +225,22 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
       make ownership exhaustive. If another required path is found,
       add it under that phase's `**Owned paths:**`, verify it is clean,
       and only then continue. Never edit an undeclared path.
-   2. After pre-flight succeeds, set both the phase and top-level plan
-      status to `In-progress`.
-   3. Execute the phase steps by dispatching a `dev-implementer` with
+   2. Recheck affected readiness prerequisites; reuse the rest only while
+      their inputs remain valid. Recheck source/plan contract identity
+      before recovery writes and each implementation dispatch or direct
+      edit; a changed contract follows step 1's read-only refusal, not
+      continued old-scope work. After pre-flight succeeds, set both the
+      phase and top-level plan status to `In-progress`.
+   3. For settled maintenance under § *Sub-Agent Use*, execute the steps
+      directly. Otherwise dispatch a `dev-implementer` with
       the plan path, this phase's identifier, and its `**Owned paths:**`
       as the files it owns. Split the phase across several implementers
       only where the slices touch disjoint files and each is substantial
       enough to earn its own context, and never exceed `max_subagents`.
-      See § *Sub-Agent Use* for the one edit you make yourself.
-   4. Run every phase `Verification` command. If a command fails,
+      See § *Sub-Agent Use* for direct-owner exceptions.
+   4. Run every phase `Verification` command, or reuse eligible evidence
+      under § *Evidence Receipts*. Classify environment failures as
+      `readiness-blocked`, not failed code attempts. For a code failure,
       debug within reasonable scope. If it cannot be made green, mark
       the phase and plan `Blocked` with an actionable reason and stop.
    5. Require `git diff --cached --quiet` again. A non-empty index is a
@@ -256,14 +279,18 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
        before the next phase. Otherwise enforce `checkpoint_every` and
        proceed to the next `Pending` phase.
 7. **Final verification.** When all phases are `Complete`, keep the
-   top-level plan `In-progress` and run every command under
+   top-level plan `In-progress`, record final verification `pending`
+   under § *Final Verification State*, and run every command under
    `## Final Verification`. If any command remains red after reasonable
-   debugging, set the plan to `Blocked` with the failing command and
-   stop. Set the plan to `Complete` only after every command succeeds.
+   debugging, record final verification `blocked`, set the plan to
+   `Blocked` with the failing command, and stop. Record a `passed` final
+   receipt and set the plan to `Complete` only after every command
+   succeeds.
    If a sanctioned verification cannot be run in this environment (for
    example a gate needing setup `AGENTS.md` documents as a
    prerequisite), do not claim it green — say explicitly which
-   verification you could not run and why.
+   verification you could not run and why, keeping final verification
+   and the plan blocked.
 8. **Final wrap-up.** Fires only when the loop has fully exited (all
    phases `Complete`, a `Blocked` phase, a scope-exceeded decision,
    or a checkpoint boundary). Never fires per-phase. Report:
@@ -278,6 +305,133 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
      opening a PR, when the change is non-trivial — and then
      `dev-pr-open` against the same slot when the user is ready to push
      and open it.
+
+## Final Verification State
+
+**Completion requires current final evidence, not just status.** After
+the source/plan identity check, read repository rules under Workflow
+step 3 before any receipt-validation probe. Check durable phase commit
+evidence and assess the latest final receipt in *Notes* against the
+current `## Final Verification` criteria and the
+relevant inputs/freshness under § *Evidence Receipts*. Include subsequent
+invalidation requests. Missing legacy evidence or unknown inputs cannot
+prove current completion. A still-valid passed final receipt permits an
+unchanged completed-plan resume without another run; an earlier phase
+receipt does not replace the required final gate.
+
+`dev-plan` may append a `Final verification invalidation` request in
+*Notes* when revising criteria; it never resolves execution state.
+Only you record final-state transitions, after safety gates permit
+writes. Append `Final verification` records with state `pending`,
+`blocked`, or `passed`, criteria fingerprint, relevant-input receipt
+reference, and reason. A passed record must follow and cover every
+outstanding invalidation; retain all earlier evidence as history.
+
+**Recover final verification without replaying implementation.** If all
+phases are complete but final evidence is stale, invalidated, or unknown:
+
+- Require the clean index, repository-sanctioned commands, relevant
+  readiness, and matching durable phase commit evidence before any plan
+  write or command with effects. Require completed phases' owned paths
+  clean in tracked, untracked, staged, and unstaged state; preserve and
+  report existing edits rather than verifying uncommitted replacement
+  work as completed implementation. A refusal forbidding plan writes
+  returns diagnostics without persisting a state transition.
+- After those gates pass, set only the top-level plan to `In-progress`
+  and record final verification `pending`, with the invalidation reason.
+  Leave every completed phase, commit, and Progress Log entry intact.
+  Go directly to Workflow step 7 and run every required final command
+  against the current completed tree; do not dispatch an implementer,
+  stage files, or create a phase commit for revalidation alone.
+- Record failure/unavailability as `blocked` and top-level `Blocked`;
+  record `passed` and top-level `Complete` only on full success. If
+  implementation changes are needed, return to `dev-plan` for new owned
+  work instead of rewriting completed phases during final-only recovery.
+
+## Readiness Gate
+
+**Check only prerequisites for the actual scope, read-only.** Before
+authors in an orchestrated run, before tool-dependent planning probes,
+and before implementation, capture a short readiness receipt:
+
+- Checkout root, baseline `HEAD`, dirty paths, declared owned paths and
+  conflicts; preserve all existing work and staged state.
+- The repository guidance used, required tool/SDK executable resolution
+  and versions from this checkout, and agreement with documented pins
+  and roll-forward/prerelease policy. Inspect only relevant native tools.
+- Relevant generated metadata or caches containing absolute paths:
+  check whether their recorded checkout roots and required paths exist
+  and match this checkout. `n/a` is valid for unrelated generated state.
+- Host/client OS, execution and privilege context, relevant endpoint or
+  path, permissions, and required platform capabilities. Mark unknown or
+  unavailable checks honestly; do not claim remote application success
+  from a listener or transport check alone.
+
+Read `AGENTS.md` first, with the documented fallback and source
+attribution. Use only its sanctioned diagnostic commands; if a required
+probe is undocumented, **stop and ask**, never provision a tool just to
+find out whether it is needed. A documentation-only task needs no
+unrelated SDK or platform probes.
+
+**Readiness is not authorization.** Do not install tools, relax pins or
+policy, elevate privileges, or reset generated paths without applicable
+authorization. A reset requires a resolved in-scope path, a preservation
+decision, and explicit approval; never blanket-delete caches. Return one
+bounded unblock request naming the prerequisite, action, scope, and
+authority needed. Record `readiness-blocked`, separate from code failure.
+
+Recheck only changed prerequisites and their dependents. Retry only after
+a prerequisite changed or new diagnostic evidence justifies a different
+bounded probe. An unchanged environment failure consumes no code-attempt
+budget and earns no repeated dispatch. Still repeat all mandatory index,
+ownership, and commit-identity gates; a prior receipt cannot waive them.
+
+## Evidence Receipts
+
+**Link evidence instead of replaying ledgers.** Use this compact handoff
+for implementation, review, recovery, and conductor stage boundaries:
+
+```text
+Objective and accepted deliverable:
+Repository / slot / stage / input fingerprint:
+Baseline commit and owned changed paths:
+Product constraints and approved decisions:
+Readiness / capability / permission receipt:
+Acceptance evidence (command, revision, platform, result):
+Current blocker and unchanged evidence:
+Next permitted action and stop condition:
+```
+
+Give delegates artifact paths, section/decision IDs, and deltas, not full
+file contents or ledgers. Include a bounded objective, non-overlapping
+owned scope, permitted effects, evidence target, and stop condition.
+Integrate their findings; do not repeat their assigned investigation.
+Keep mandatory safety context and decisive evidence available.
+For standalone task start/handback, apply `dev-complete` § *Local
+Efficiency Record* only through available private session metadata;
+unexposed counters remain unavailable and grant no model-policy change.
+
+**Bind validation to its inputs.** Record each receipt in plan *Notes*:
+revision/tree or relevant-input fingerprint (including uncommitted
+changes), command and combined selectors, tool/dependency versions,
+OS and target platform, timestamp, result/skips, limitations, and a
+durable evidence location. Reuse an implementer's successful run instead
+of immediately repeating it when these inputs still match. Combine
+related selectors in one sanctioned runner; escalate after a relevant
+failure or when a required broader gate demands it.
+
+Reuse requires unchanged relevant code, dependencies, configuration,
+toolchain, platform, permissions, and valid freshness requirements.
+Unknown inputs invalidate reuse. Rerun affected checks after a change;
+retain all required final, deployment, and cross-platform gates. Final
+verification still runs at the completed tree; an earlier receipt may
+explain results but cannot skip that gate or prove commit identity.
+
+Keep local readiness details, sensitive paths, and telemetry in supported
+private session storage; artifact notes contain only public-safe IDs,
+relative paths, digests, and concise outcomes. Redact secrets and payloads.
+These are inspection receipts, **not** activation of `handoff-v1` seals
+or publishing authorization.
 
 ## Sub-Agent Use
 
@@ -299,8 +453,14 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
     adversarial critique is useful.
   - **`general-purpose`** only for work that needs the full toolset and
     genuine judgment, and that none of the above covers.
-- **A phase's code is written by a `dev-implementer`, not by you.**
-  Dispatch one per phase as the default. You are the conductor of this
+- **Settled maintenance stays with its direct owner.** When the plan
+  records no unresolved design choice, new component, public-interface
+  or material behavior change, and no compatibility or preservation
+  risk, implement it directly with focused checks. Record the reason.
+  File count alone does not establish this tier; doubt takes the
+  bounded-implementation path.
+- **Bounded or contested phases use one `dev-implementer` by default.**
+  You are the conductor of this
   stage: you read the plan, decide what each phase means, integrate what
   comes back, verify it, update the status, and commit. Writing the code
   yourself puts it in whatever context happens to be holding this skill —
@@ -312,7 +472,7 @@ sibling source request (`featurerequest.md` / `bugreport.md`).
   files and each slice is substantial enough to be worth its own context.
   A phase split three ways for the sake of parallelism pays three context
   startups to write what one implementer would have written in sequence.
-- **The exception is an edit the plan already specifies verbatim** — a
+- **A verbatim edit is also safe to do directly** — a
   version bump, a constant the plan names, a rename it spells out in
   full. There is no judgment left in it to delegate, and the round trip
   would cost more than the edit. Anything that requires reading
@@ -403,6 +563,8 @@ completion:
 - If all phases are `Complete` while the plan is `In-progress` or
   `Blocked`, rerun `## Final Verification`; do not redo a phase or
   report completion without that gate.
+- A top-level `Complete` plan with invalidated or unknown final evidence
+  follows § *Final Verification State*, even with no pending phases.
 - If additional user input materially changes a pending phase, prefer a
   `dev-plan` revision before implementation.
 

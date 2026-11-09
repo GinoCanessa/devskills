@@ -440,6 +440,21 @@ they are meant to be tracked, and so are the agent definitions.
      every verification block in every plan unrunnable.
    - **Toolchain pins** and where they live (`global.json`, `.nvmrc`,
      `.tool-versions`, `rust-toolchain.toml`, `<maven.compiler.release>`).
+     Record checkout-local resolution/version probes and exact-versus-
+     roll-forward/prerelease policy, not just an installed-version list.
+     For native tracks resolve only needed compiler/build tools.
+     For .NET compare `dotnet --version` from the target checkout with
+     `global.json`. Never impose an SDK policy change: an owner-approved
+     `latestPatch` / `allowPrerelease: false` policy must preserve the
+     accepted feature-band baseline; an exact pin stays exact.
+   - **Read-only readiness diagnostics.** Identify relevant generated
+     metadata (for example `project.assets.json` or `CMakeCache.txt`)
+     whose absolute paths may name an absent checkout. Record inspection
+     and preservation guidance, host/client OS, privilege context,
+     failing endpoint/path, permissions, and unavailable platform gates.
+     Do not install tools, relax pins, or reset caches to detect the stack.
+     Keep toolchain files and build docs consistent only with owner
+     approval; auditing is not permission to change them.
    - **Whether warnings are errors** (`TreatWarningsAsErrors`, `-Werror`,
      `strict` mode) — this changes what "green" means.
    - **Multiple build tracks** — native + managed, per-platform, or a
@@ -512,6 +527,10 @@ they are meant to be tracked, and so are the agent definitions.
    - Read it and check it against the required section list.
    - Report which required sections are missing or empty, and which recorded
      commands you could not corroborate from the repo's build metadata.
+   - Audit readiness probes and pin policy, generated-path preservation,
+     platform/permission limits, and validation-receipt freshness guidance.
+     Propose targeted additions; never overwrite existing policy or
+     auto-provision missing prerequisites.
    - **If the `## GitHub Integration` section is absent**, offer to append
      **only** the sentinel block, filled from step 3.5 and step 7, leaving
      the rest of the file untouched. Reproduce the opener and closer exactly
@@ -621,9 +640,9 @@ list both to fill the template and to audit an existing file.
 | Preamble + precedence | Which file wins when this one and the repo disagree. |
 | What this repository is | The framing fact that settles design arguments. |
 | Repository layout | Where things live; which paths are ignored. |
-| Toolchain pins | Versions, where pinned, exact-vs-floor. |
+| Toolchain pins | Versions, where pinned, exact-vs-floor, read-only resolution probes, generated-path preservation, platform/permission prerequisites. |
 | Build | The exact command(s), per track, with the expected baseline. |
-| Test | Runner, **valid filter syntax**, and full / scoped / focused commands. |
+| Test | Runner, **valid filter syntax**, full / scoped / focused commands, receipt inputs/freshness, and required final/platform gates. |
 | Lint / format | The command, or an explicit "there isn't one". |
 | Run | How to start the app locally, with required configuration. |
 | Code style | The authoritative config, and the rules an agent must not get wrong. |

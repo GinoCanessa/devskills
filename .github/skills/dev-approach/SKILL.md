@@ -162,6 +162,13 @@ writes exactly four files and no others.
    `README.md` / `CONTRIBUTING.md` and state in your output which
    source you used. **Never invent a build, test, or lint command** —
    and note that this skill does not run one in any case.
+   Require a settled product contract under `dev-request` § *Product
+   Contract*. Capture its revision and source fingerprint and pass that
+   same identity to every author and the judge. For a legacy or pending
+   material contract, return to its source owner for targeted revision;
+   never silently invent ownership, execution semantics, or a baseline.
+   If new focus text changes a contract field, require that owner's dated
+   delta before dispatch; do not hand authors contradictory scope.
 3. **Re-invocation check.** If any `approach*.md` already exists in the
    slot, stop and follow § *Re-Invocation Modes* before doing anything
    else. Do not overwrite silently.
@@ -176,6 +183,11 @@ writes exactly four files and no others.
    approaches, and follow § *Triviality Check*. State that view and the
    alternative you did not take before you act on it, so the user can
    redirect you.
+   Record source/contract and focus fingerprints, expected candidate set,
+   current owner/task handles or `unavailable`, baseline, and active
+   lifecycle state in public-safe notes. Keep private handles in
+   supported session metadata. Before any destructive regeneration,
+   establish that earlier tasks stopped and preserve decision history.
 
    The skeleton is written here because both decisions this stage makes
    happen at steps 3 and 4, while their designated home is not written
@@ -183,11 +195,12 @@ writes exactly four files and no others.
    failing, which is exactly the outcome a fan-out designs for — loses
    both from disk, and leaves a resumed run under-reporting what it had
    already decided.
-5. **Fan out the three authors** as isolated sub-agents, honoring
+5. **Dispatch the expected authors** as isolated sub-agents, honoring
    `max_subagents`. Each writes its own file directly. See
    § *Sub-Agent Use*.
 6. **Run the judge** as a separate sub-agent, only after all three
-   authors have finished. The judge reads the three files from disk and
+   authors (or A in collapsed mode) have finished. Record candidate
+   fingerprints before judgment. The judge reads those files from disk and
    returns a verdict; it does not write anything.
 7. **Fill in `approach.md`** yourself, transcribing the judge's verdict
    into the format below **on top of the skeleton step 4 already
@@ -215,8 +228,9 @@ or `approach-c.md` — in this format:
 
 | | |
 |-|-|
-| Slot | `scratch/<MMDD>-<##>/` (or full path) |
+| Slot | {repository-relative slot path} |
 | Source | `featurerequest.md` / `bugreport.md` (read-only) |
+| Contract revision | {source Rn and fingerprint supplied by caller} |
 | Issue | [#N](<url>) — or `not published` |
 | Optimizing for | minimum change / cleanest architecture / unconstrained |
 | Created | {YYYY-MM-DD} |
@@ -284,7 +298,9 @@ You — the orchestrator, not the judge — write `approach.md`:
 | Source | `featurerequest.md` / `bugreport.md` (read-only) |
 | Issue | [#N](<url>) — or `not published` |
 | Selected | {A / B / C} — {short title of the selected approach} |
+| Contract revision | {source Rn and fingerprint shared by all roles} |
 | Mode | contested / collapsed |
+| Decision status | active |
 | Created | {YYYY-MM-DD} |
 
 ## Selected
@@ -374,9 +390,11 @@ line above is the half a human sees first.
   carries the isolation rules and the designer-not-implementer constraint
   in its own definition; fall back to `general-purpose` where it is not
   loaded, and state those rules explicitly in the prompt when you do.
-  Each one is given: the **absolute path** of the source, the user's
-  focus text if any, its own axis, and its own output path — and nothing
-  else. It reads the source and `AGENTS.md` itself, as every agent in the
+  Each one is given: the **absolute path** of the source, its frozen
+  contract revision and fingerprint, the user's focus text if any, its
+  own axis, its own output path, permitted effects, evidence target, and
+  stop condition — never sibling evidence. It reads the source and
+  `AGENTS.md` itself, as every agent in the
   loop does; handing three authors the text of both would put the same
   two files into three contexts to save each of them one read.
 - **Each author is explicitly forbidden** from reading, globbing for,
@@ -394,13 +412,21 @@ line above is the half a human sees first.
   carries **no edit tool at all** — the rule below that a judge never
   writes is enforced by its definition rather than by its willingness to
   comply. Fall back to `rubber-duck`, or to `general-purpose` prompted
-  adversarially, where it is not loaded. It runs only after all three
-  authors have finished; it reads the three files from disk; it is **not
+  adversarially, where it is not loaded. It runs only after the expected
+  authors have finished; it reads their files from disk; it is **not
   told which axis produced which file**, so it must attack the claims
   each file makes about itself rather than the label on it.
 - **The judge never writes.** It returns a verdict; you transcribe it
   into `approach.md`. A judge that owns the file is one prompt away
   from editing its own verdict into a fourth design.
+- **Check the shared contract before judgment.** Rehash the source after
+  authors return and compare every candidate's contract identity. A
+  mismatch stops judgment until the source owner and affected authors
+  resolve it. Give the judge the same identity and require it to reject
+  a candidate outside that contract. Preserve unaffected evidence.
+- **Integrate, do not duplicate discovery.** Each delegate owns a bounded
+  question and evidence target. Do not have the parent survey the same
+  code before or after their assigned investigation.
 - **Honor `max_subagents`.** Never run more than `max_subagents`
   sub-agents concurrently. Serializing changes the wall clock, never
   the isolation.
@@ -433,13 +459,18 @@ the same starting point and erode the isolation the fan-out exists for.
 Before fanning out, read the source and form a view on whether it
 warrants three approaches.
 
-**Default to collapsing when the source is trivial**, and to the full
-three-way fan-out otherwise. A source is trivial when it is confined to a
-single file, adds no new component, changes no public interface, and
-implies no choice a reasonable engineer would argue about — a typo, a
-version bump, a documented-constant change, a docs-only edit. Three
-isolated authors designing a one-line change produce three descriptions
-of the same line, and the judge then picks between them on style.
+**Honor explicitly requested alternatives first.** Otherwise collapse
+settled maintenance or bounded work whose solution shape is established,
+with no material unresolved design choice or high-risk compatibility
+trade-off. File count alone does not justify a contest. Run all three
+authors for contested architecture, uncertain boundaries, or requested
+alternatives. A small public-interface change can still warrant the full
+contest; a settled multi-file maintenance edit need not.
+
+Record owned scope, unresolved choices, public/compatibility impact,
+requested review depth, and the reason for the route in *Notes*.
+`dev-complete` can skip this optional stage for settled/bounded work;
+when invoked directly, keep its collapsed selection contract below.
 
 Either way, **say which you chose and why, in one sentence, before you
 act on it**, and offer the other. This is a **statement with an
@@ -470,18 +501,54 @@ Downstream skills therefore have one contract, not two, and the
 triviality claim lands where a later reader can see it was a choice
 rather than an oversight.
 
+## Retiring a Decision
+
+**Retire through the decision owner, not file deletion.** On an explicit
+retirement request for a changed source-only route, first establish that
+prior author/judge tasks stopped or ownership was explicitly handed off.
+Require the current settled source contract and a justified settled or
+bounded route; unresolved architecture or requested alternatives still
+need an active decision.
+
+Set `Decision status` to `retired` in `approach.md` and append a dated
+record under `## Retirement`: current source contract revision and
+fingerprint, source-only workflow tier, reason, and authority for the
+route change. Keep the prior selection's contract metadata, judgment,
+overrides, Notes, and candidate files unchanged as history. This
+owner-only metadata operation commissions no authors or judge.
+
+Planning recognizes retirement only when that record matches the
+current source and route. An old `## Selected` or `## Override` is not
+authoritative while retired. Missing or stale retirement evidence
+requires owner reconciliation, never an inferred source-only bypass.
+An ordinary resume with current retirement evidence reports reuse and
+returns without authoring or judgment. Explicit regeneration, refinement,
+or rejudgment may reactivate it only by producing a current selection and
+setting `Decision status` to `active`; preserve retirement history.
+
 ## Re-Invocation Modes
 
-**First, rule out an interrupted first run.** An `approach.md` with no
-`## Selected` section and no author files beside it is the skeleton
-workflow step 4 writes, left behind by a hand-back before the judge
-ran. That is an **interrupted first run**, not a re-invocation:
-continue from step 4 without prompting. None of the three modes below
-describes it, because all three presuppose that `approach-a.md`,
-`approach-b.md`, and `approach-c.md` already exist.
+**First, check ownership and input identity.** If the known author or
+judge task is active, continue through its known completion path; a
+delayed reply never authorizes a duplicate dispatch. If ownership is
+unknown, require an explicit handoff. Compare the recorded source,
+contract revision, focus, and candidate fingerprints before reuse.
+An explicit retirement follows § *Retiring a Decision*, not the three
+rejudgment modes below. A retired decision on a source-only route is
+reused only with current retirement evidence; do not commission a judge
+merely because historical candidates match an older contract.
 
-Otherwise, when the slot already holds one or more `approach*.md`
-files, **do not guess what the user meant**. Report what you found —
+An unfinished skeleton or partial candidate set with unchanged inputs
+is an interrupted run, not permission to regenerate completed authors.
+Resume only missing or invalidated owned outputs after establishing
+that prior tasks have stopped. A collapsed run expects only A; do not
+recreate B/C merely because they are absent. A current complete selection
+with unchanged inputs is reused on an ordinary resume; an explanation
+request does not rejudge it.
+
+For an explicit revision or changed inputs, when the slot holds one or
+more `approach*.md` files, **do not guess what the user meant**. Report
+what you found —
 which files exist, what `approach.md` currently selects — and offer
 exactly three modes:
 
@@ -497,8 +564,9 @@ exactly three modes:
   unchanged. For when the authors were fine and the judge called it
   wrong.
 
-Every mode rewrites the **judgment** in `approach.md`, and every mode
-**preserves** its `## Notes` section. That section is where this
+Every rejudgment mode rewrites the **judgment** in `approach.md` and
+sets `Decision status` to `active`. Every mode **preserves** its
+`## Notes` section. That section is where this
 stage's own decisions are recorded as they are made, so a rewrite that
 discarded it would destroy the record a resumed run rebuilds from. An
 existing `## Override` block is different, and does **not** survive a
@@ -521,7 +589,8 @@ alternatives:
 Declining is the normal, fully-supported outcome. When the user
 declines, name the file path and stop.
 
-When the user does disagree, **append** an `## Override` section below
+When the user does disagree with an active selection, **append** an
+`## Override` section below
 the judge's call recording their choice and their reason. Never edit
 the judge's selection, never rewrite `## Why This One` to agree, and
 never delete the reasoning that led to the rejected verdict. When an
@@ -546,10 +615,11 @@ so and offer the right tool rather than recording a fourth design in an
 - **Today's date governs slot expansion.** Never reuse a previous day's
   `<MMDD>` for a numeric slot. For an earlier slot, the user must give
   a full path.
-- **Three isolated authors, then a judge.** The isolation is the
-  product. An author that sees a sibling's file, or a judge that reads
-  the three with the axis labels attached, produces the appearance of a
-  contest without the contest.
+- **Three isolated authors, then a judge for design work.** Retirement
+  only records owner metadata; it never creates a new design. Isolation
+  is the product. An author that sees a sibling's file, or a judge that
+  reads the three with the axis labels attached, produces the appearance
+  of a contest without the contest.
 - **Isolation is never traded away silently.** *refine* mode is the
   only mode that spends part of it, and it says so out loud before the
   user picks it.
