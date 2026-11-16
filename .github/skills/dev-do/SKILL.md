@@ -482,26 +482,29 @@ or publishing authorization.
 
 ## Sub-Agent Model Tier
 
-Resolve each role against the **subagent model policy** in the
-repository's `AGENTS.md` (`## Agent guardrails`). An absent or
-unreadable policy means `uniform`, and every role below runs the
-spawning agent's model.
+Before dispatch, read the **subagent model policy** in `AGENTS.md`
+(`## Agent guardrails`) and the installed skills' shared
+`dev-plan\references\model-assignment.md` contract. It resolves
+`uniform`, `tiered`, `role-based` (alias `role`), and `auto`, including
+fallbacks, harness capabilities, caller mismatches, multiple review
+models, budgets, and resume identity. An absent or unreadable policy
+means `uniform`.
 
-| Role | Tier | Agent |
-|-|-|-|
-| Implementing a phase, or an owned-file slice of one | reasoning | `dev-implementer` |
-| Adversarial critique of an approach mid-phase | reasoning | `rubber-duck` |
-| Diagnosing a failed verification command | reasoning | `general-purpose` |
-| Reviewing a diff you just produced | reasoning | `code-review` |
-| Running a documented build, test, or lint command and reporting the result | mechanical | `task` |
-| Locating files, symbols, or call sites | mechanical | `explore` |
-| Checking a specific claim against a specific file | mechanical | `explore` |
+| Role | Tier | Assignment role | Agent |
+|-|-|-|-|
+| Implementing a phase, or an owned-file slice of one | reasoning | engineering / documentation | `dev-implementer` |
+| Adversarial critique of an approach mid-phase | reasoning | review | `rubber-duck` |
+| Diagnosing a failed verification command | reasoning | engineering | `general-purpose` |
+| Reviewing a diff you just produced | reasoning | review | `code-review` |
+| Running a documented build, test, or lint command and reporting the result | mechanical | verification | `task` |
+| Locating files, symbols, or call sites | mechanical | discovery | `explore` |
+| Checking a specific claim against a specific file | mechanical | verification | `explore` |
 
-**The built-in agents already run lightweight models.** `explore` and
-`task` are the mechanical tier for most repositories — reaching for them
-is what makes the policy real, and no `model:` needs to be passed to get
-it. Only a mechanical role that none of the built-ins covers needs the
-recorded mechanical-tier model.
+Choose documentation for documentation-only implementation work,
+otherwise `engineering`. Apply the same assignment to eligible direct
+work through the shared running-caller rule. Prefer built-in `explore`
+and `task` for their bounded roles, but verify their effective selection;
+a lightweight default must not override the configured policy.
 
 The line is whether the caller can **verify the output cheaply**. A test
 run either passes or it does not, and you read the result yourself, so a

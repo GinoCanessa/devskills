@@ -54,9 +54,10 @@ Do not turn an unanswered factual question into an assumed fact.
    | `max_subagents` | `3` | Integer `1..8`; concurrent children, not total spend |
    | `max_total_subagents` | `8` | Integer `1..32`; all child invocations across this slot's resumes |
    | `review_iterations` | `1` | Integer `0..5`; fix-and-recheck cycles after the initial review |
-   | `model_policy` | `inherit` | `inherit`, `uniform`, or `tiered`; see below |
-   | `reasoning_model` | inherited | An explicit model available to the current session |
+   | `model_policy` | `inherit` | `inherit`, `uniform`, `tiered`, `role-based` (alias `role`), or `auto` |
+   | `reasoning_model` | inherited | An explicit child model under `uniform` or `tiered` |
    | `mechanical_model` | recorded policy | An explicit mechanical-tier model under `tiered` only |
+   | `role_assignments` | recorded policy | A role-to-selection mapping, including `default`, under `role-based` only |
 
    Except for `mode`, omitted options on resume retain their recorded
    values. A changed option is a visible revision, not an implicit reset.
@@ -307,7 +308,9 @@ continuous trace stays in-process regardless of length. Use the built-in
 `explore` agent for bounded, read-only inventories and evidence locations,
 not for final conclusions. Do not create work merely to fill the cap.
 
-**Use one independent documentation reviewer**, even for a small output.
+**Use one independent documentation reviewer per selected review model**,
+even for a small output. A single selection retains the one-reviewer
+behavior; multiple models each review the complete deliverable.
 Use `dev-explore-reviewer`, falling back to `rubber-duck` when unavailable;
 state the read-only and no-delegation rules in the fallback prompt.
 Never substitute the implementation loop's review skill or artifact.
@@ -322,22 +325,27 @@ You persist their results in the artifacts you own.
 **Honor both budgets.** Record each dispatch before starting it; include
 failed, cancelled, fallback, and recheck invocations in the durable total.
 Never run more than `max_subagents` children at once, and never exceed
-`max_total_subagents` across resumes. Reserve a dispatch for the initial
-review and each planned recheck; use in-process discovery if it would
-consume that reserve. If no review budget remains, stop rather than
-quietly replacing independent review with self-approval.
+`max_total_subagents` across resumes. Reserve a dispatch for **each
+selected model** in the initial review and each planned recheck; use
+in-process discovery if it would consume that reserve. If the required
+reviews cannot fit, report their count and request an explicit budget or
+scope decision before dispatch, rather than silently raising the budget,
+dropping a model, or replacing independent review with self-approval.
 
 ## Sub-Agent Model Tier
 
 Read the policy under `## Agent guardrails` in `AGENTS.md`. `inherit`
 uses it; an absent or unreadable policy means `uniform`. Explicit
 `model_policy` overrides apply only to this run and never edit that file.
+Before dispatch, read the installed skills' shared
+`dev-plan\references\model-assignment.md` contract for all four policies,
+harness capability checks, caller assignments, and multiple review models.
 
-| Role | Tier | Agent |
-|-|-|-|
-| Bounded source inventory | mechanical | `explore` |
-| Independent documentation review or recheck | reasoning | `dev-explore-reviewer`, fallback `rubber-duck` |
-| Editorial work and source synthesis | reasoning | do it yourself |
+| Role | Tier | Assignment role | Agent |
+|-|-|-|-|
+| Bounded source inventory | mechanical | discovery | `explore` |
+| Independent documentation review or recheck | reasoning | review | `dev-explore-reviewer`, fallback `rubber-duck` |
+| Editorial work and source synthesis | reasoning | documentation | do it yourself |
 
 Under `uniform`, children inherit the session's model configuration unless
 the user supplied `reasoning_model`, which then selects all children.
@@ -345,14 +353,25 @@ Under `tiered`, reasoning children inherit that configuration or its
 explicit override; mechanical children use `mechanical_model`, falling
 back to the mechanical-tier model recorded in `AGENTS.md`. A resolved
 `tiered` policy without an available mechanical model is a blocker.
-Reject `mechanical_model` under `uniform` rather than silently ignore it.
+Under `role-based` (alias `role`), use `role_assignments` when supplied;
+otherwise use the recorded role table. The domain is documentation;
+an explicit `review` row takes precedence over that domain. Under `auto`,
+use the harness's supported automatic selector, not assumed inheritance.
+Reject explicitly supplied `reasoning_model` outside `uniform` / `tiered`,
+`mechanical_model` outside `tiered`, and `role_assignments` outside
+`role-based`, using the effective policy after resolving `inherit`.
+Record omitted, inapplicable model options as `n/a`, not as active
+selectors.
 
-Record the effective selections and their source. Overrides select child
-models only: they cannot change the model already running this skill.
+Record the effective selections and their source. Legacy model overrides
+select children only. No override or role assignment can switch the model
+already running this skill; apply the shared running-caller rule to
+in-process documentation work.
 Never bake a model ID into a portable skill or agent. Pass model fields
 only for an explicit user selection or a resolved repository policy;
-otherwise let the child inherit. Do not silently substitute an unavailable
-model or send judgment work to a mechanical role.
+otherwise use the resolved inheritance or automatic mechanism. Do not
+silently substitute an unavailable model or reclassify judgment as a
+mechanical role.
 
 ## State and Resume
 

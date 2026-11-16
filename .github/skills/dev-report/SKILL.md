@@ -406,6 +406,11 @@ command itself.
 
 ## Important Rules
 
+- **Honor the configured model assignment.** Read the model policy under
+  `## Agent guardrails` in `AGENTS.md` and the installed skills' shared
+  `dev-plan\references\model-assignment.md` contract. Your domain is
+  documentation. Apply its running-caller rule; configuration cannot
+  switch this session's model, authorize delegation, or change ownership.
 - **Repository conventions live in `AGENTS.md`.** Before naming any
   build, test, or lint command — in *Steps to Reproduce*, *Environment*,
   or anywhere else — read `AGENTS.md` at the repository root. If it is

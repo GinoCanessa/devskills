@@ -91,9 +91,10 @@ You are a **setup engineer**. That means:
    `assets\theme.js`, and `references\html-contract.md` exist beneath
    its directory. These portable assets ship with the skill; they are
    not optional target-repository dependencies.
-   Require `dev-plan\references\handoff-contract.md` beneath
-   `SKILLS_SOURCE` too. This shared reference is a required support file,
-   not an additional skill or permission to activate a worker contract.
+   Require `dev-plan\references\handoff-contract.md` and
+   `dev-plan\references\model-assignment.md` beneath `SKILLS_SOURCE` too.
+   These shared references are required support files, not additional
+   skills or permission to activate the sealed-handoff contract.
    `dev-setup` itself is **never** copied into the target.
 
 ## Git Mode
@@ -213,8 +214,9 @@ they are meant to be tracked, and so are the agent definitions.
    `AGENTS_SOURCE`, and `TEMPLATE` as described under Inputs. Confirm the
    ten skill directories and the required documentation assets exist.
    Also require
-   `<SKILLS_SOURCE>\dev-plan\references\handoff-contract.md`; stop and
-   name the missing path if it is absent. Do not let enumeration of an
+   `<SKILLS_SOURCE>\dev-plan\references\handoff-contract.md` and
+   `<SKILLS_SOURCE>\dev-plan\references\model-assignment.md`; stop and
+   name a missing path. Do not let enumeration of an
    incomplete source turn a missing required support file into a pass.
    Note whether `AGENTS_SOURCE` exists —
    step 4.2 branches on it, and an unresolved variable there would skip
@@ -244,13 +246,20 @@ they are meant to be tracked, and so are the agent definitions.
      skip that detection entirely rather than resolving values nobody asked
      for.
 
-3.6. **Settle the subagent model policy.** Ask this in **both** git modes,
-   and **default to `tiered`**:
+3.6. **Settle the subagent model policy.** Offer the same four choices in
+   **both** git modes; **default to `tiered`** for a new configuration:
 
-   > *"When a `dev-*` skill fans out, should every sub-agent run your
-   > model, or should mechanical roles — locating files, running the
-   > documented build and test commands, collecting output — run a cheaper
-   > one? (default: tiered)"*
+   > *"How should models be assigned: uniform (same configuration for all
+   > tasks), tiered (a cheaper model for mechanical work), role-based
+   > (your assignments by task), or auto (the harness chooses)?
+   > (default: tiered)"*
+
+   Read `dev-plan\references\model-assignment.md` from `SKILLS_SOURCE`
+   for the shared schema and resolution rules. On refresh, preserve a
+   complete recorded answer unless the user requests a change. Validate
+   current harness capabilities; surface unsupported selections instead
+   of silently changing them. Do not treat an omitted model as auto
+   unless that is its documented meaning in the current harness.
 
    - The loop is sub-agent-heavy by construction: one `dev-complete` run
      dispatches a sub-agent per stage *on top of* each stage's own fan-out.
@@ -267,9 +276,32 @@ they are meant to be tracked, and so are the agent definitions.
    - On **`uniform`**, record `Policy: uniform` and
      `Mechanical-tier model: n/a`. That is the pre-policy behavior, and it
      is always a safe answer.
-   - Record the answer in step 8. The table is written **either way**, so a
-     user who takes the default today can find the rows and flip them later
-     without re-running this skill.
+   - On **`role-based`**, accept **`role`** as an alias. Accept natural
+     language, resolve friendly model names against the harness's actual
+     catalog, and show a `Role` / `Selection` table before confirmation.
+     Offer orchestration, planning, judging, review, engineering,
+     documentation, discovery, and verification; omit unassigned roles.
+     Record an explicit `default` for all other work. Resolve specific
+     task roles before engineering/documentation domains and then default.
+     "All other tasks use this model" supplies that default; "you may
+     choose other models" proposes `auto`, subject to confirmation.
+     Review may list multiple concrete models: each independently runs
+     every required review track, within existing budgets. Other roles
+     have one selection. Selections may otherwise be a confirmed model
+     with supported options, `inherit`, or `auto`. Clarify ambiguity,
+     including a missing default, instead of inventing an assignment.
+     Record `Policy: role-based`, `Mechanical-tier model: n/a`, and the
+     confirmed `#### Role assignments` table.
+   - On **`auto`**, record `Policy: auto`,
+     `Mechanical-tier model: n/a`, and role assignments `n/a`. Confirm
+     the supported automatic-selection mechanism, not a fixed model.
+   - Explain that configuration **cannot switch the already-running
+     caller**. An orchestration or other in-process assignment applies
+     when that owner is launched through the harness; report any required
+     relaunch instead of claiming the current session changed model.
+   - Record the answer in step 8. Write the settings for every policy;
+     role assignments are `n/a` outside `role-based`. Never leave stale
+     active role mappings when an approved policy change removes them.
    - This is orthogonal to `git_mode` and to the GitHub integration.
      Never infer it from either, and never skip it because one of them was
      declined.
@@ -279,9 +311,10 @@ they are meant to be tracked, and so are the agent definitions.
    replacing any existing copy. Do **not** copy `dev-setup`.
    Copy recursively, including references and static documentation assets;
    copying only `SKILL.md` leaves the HTML workflow unusable and drops
-   the shared handoff contract. Preserve
-   `dev-plan\references\handoff-contract.md` at that same relative path;
-   it travels with `dev-plan`, without changing the ten-worker count.
+   the shared contracts. Preserve
+   `dev-plan\references\handoff-contract.md` and
+   `dev-plan\references\model-assignment.md` at those relative paths;
+   they travel with `dev-plan`, without changing the ten-worker count.
 
    ```powershell
    $skillsDir = Join-Path $TARGET '.github\skills'
@@ -320,12 +353,11 @@ they are meant to be tracked, and so are the agent definitions.
      built-in fallback for each role it dispatches, so a target without
      these definitions still works — it just spends more and enforces the
      read-only roles by prose. Say so in your report rather than stopping.
-   - **Never pin a `model:` into a copied definition.** Every shipped role
-     is a reasoning role and inherits the session's model by omitting the
-     property. The mechanical tier is served by the built-in `explore` and
-     `task` agents, which already run lightweight models — which is why
-     step 3.6's recorded model is a *fallback* for roles the built-ins do
-     not cover, not something to stamp into these files.
+   - **Never pin a `model:` into a copied definition.** Resolve selection
+     through runtime dispatch controls, preserving the role's tool
+     restrictions. Built-in `explore` and `task` defaults may serve
+     mechanical work only when they satisfy the selected policy; they
+     must not override uniform, tiered, role-based, or auto assignments.
    - Record which definitions you copied; step 5 names them file by file in
      `exclude` mode, and it must name exactly these.
 
@@ -514,8 +546,8 @@ they are meant to be tracked, and so are the agent definitions.
    - Copy `TEMPLATE` to `<TARGET>\AGENTS.md` and fill every `{TBD: ...}`
      marker from step 7 — including every row inside the
      `## GitHub Integration` sentinel block, from step 3.5's answer and
-     step 7's GitHub detection, and both rows of the
-     `### Subagent model policy` table, from step 3.6's answer. If
+     step 7's GitHub detection, and the settings and role assignments in
+     `### Subagent model policy`, from step 3.6's answer. If
      `TEMPLATE` is missing, author the file directly with the sections
      listed under "Required AGENTS.md sections" below.
    - Leave a `{TBD: <what to find>}` marker only for something you genuinely
@@ -552,6 +584,11 @@ they are meant to be tracked, and so are the agent definitions.
      favor of a pointer to the table. Say plainly that declining leaves
      the repo on `uniform`, because an absent table *is* `uniform`;
      nothing breaks, and nothing gets cheaper.
+   - **If a model policy exists**, retain its resolved settings on a
+     normal refresh. With explicit approval for a policy change, replace
+     only that subsection and retire conflicting old model instructions;
+     do not append another policy or leave stale role assignments active.
+     Older two-row uniform/tiered configurations need no new role table.
    - **If the section exists and its `Repository` row disagrees with the
      target's own `origin` remote**, report it as a finding. A forked repo
      inherits the upstream's tracked `AGENTS.md`, so this is the expected
@@ -568,7 +605,8 @@ they are meant to be tracked, and so are the agent definitions.
      the same relative path in the target and has the same SHA-256 hash.
      In particular, verify the three HTML assets and design reference
      beneath `dev-explore`, and require
-     `.github/skills/dev-plan/references/handoff-contract.md`.
+     `.github/skills/dev-plan/references/handoff-contract.md` and
+     `.github/skills/dev-plan/references/model-assignment.md`.
      Report every support file's relative path and source/target hashes;
      a missing file, path mismatch, or hash mismatch fails verification.
      A skill-file count alone is insufficient. Apply this check on
@@ -610,9 +648,15 @@ they are meant to be tracked, and so are the agent definitions.
      `<TARGET>\AGENTS.md`, with an `Enabled` row matching step 3.5's answer.
    - The `### Subagent model policy` table appears **exactly once**, with a
      `Policy` row matching step 3.6's answer and a `Mechanical-tier model`
-     row that is a real model id under `tiered` and `n/a` under `uniform`.
-     A `tiered` policy whose model row still reads `{TBD` is worse than
-     `uniform`: it is a policy no skill can resolve.
+     row that is an available confirmed model under `tiered` and `n/a`
+     otherwise. Under `role-based`, the confirmed role table appears
+     once with a resolved default and no unknown roles or ambiguous
+     selections; any multiple-model row is review only. Outside that
+     policy, new configurations record role assignments `n/a`; legacy
+     uniform/tiered tables without them remain valid. Under `auto`
+     (including role-level auto), identify the harness's supported
+     automatic-selection mechanism. No model selection may remain
+     `{TBD}` or silently fall back.
    - `git -C <TARGET> diff --cached --quiet` exits 0 — you staged nothing.
    - `<TARGET>\AGENTS.md` exists, and its remaining `{TBD` markers are
      listed.
@@ -622,8 +666,9 @@ they are meant to be tracked, and so are the agent definitions.
     copied; the agent definitions copied, or that the canonical source had
     none, and each one's `tools:` result from step 4.6; the GitHub
     integration answer and every value recorded for it;
-    the subagent model policy and, under `tiered`, the mechanical-tier
-    model recorded; the `AGENTS.md` outcome (created / audited) with every
+    the subagent model policy and its confirmed selections or automatic
+    mechanism, including any caller-relaunch requirement;
+    the `AGENTS.md` outcome (created / audited) with every
     outstanding `{TBD}`; a compact summary of the detected stack; and the
     **next step** — *start a fresh Copilot CLI session in the target repo*
     so `.github/skills/` is auto-discovered and the skills load. Confirm
@@ -682,11 +727,10 @@ when `Enabled` is `no` there is no such row to disagree.
   would hide skills this installer never created. The same goes for agent
   definitions: name each `dev-*.md` file, never the `.github/agents/`
   directory, which the target may already be using for its own agents.
-- **Never pin a `model:` into an agent definition you copy.** Every
-  shipped role is a reasoning role and inherits the session's model by
-  leaving the property unset. The cheap tier comes from routing mechanical
-  work to the built-in `explore` and `task` agents, not from cheapening a
-  role that exists to exercise judgment.
+- **Never pin a `model:` into an agent definition you copy.** Resolve the
+  selected policy at dispatch, not in portable front matter. Neither a
+  named role nor a built-in agent default may override that selection or
+  weaken tool restrictions.
 - **Idempotent.** Re-running must not duplicate rules and must cleanly
   refresh the copied skills. The sentinel block is what makes that possible;
   always write it.

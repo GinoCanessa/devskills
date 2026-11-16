@@ -94,8 +94,8 @@ dev-setup C:\ai\git\some-repo
    (default: no), and — when it is — resolve the target repository, the
    label mapping, the changelog location and format, and whether PRs open
    as drafts.
-3. Ask which **subagent model policy** to record (default: `tiered`) — see
-   below.
+3. Offer **uniform**, **tiered**, **role-based**, or **auto** model
+   assignment (default: `tiered` for new configurations) — see below.
 4. Copy the ten worker skills, including their supporting assets, into
    `<target>/.github/skills/`, and the shared agent definitions into
    `<target>/.github/agents/`.
@@ -323,17 +323,19 @@ Omitting `mode` on resume means `automatic`, as with `dev-complete`.
 | `max_subagents` | `3` | Concurrent children, from `1` to `8` |
 | `max_total_subagents` | `8` | Total child invocations across resumes, from `1` to `32` |
 | `review_iterations` | `1` | Fix-and-recheck cycles after the initial review, from `0` to `5` |
-| `model_policy` | `inherit` | Use `AGENTS.md`, or explicitly select `uniform` / `tiered` for this run |
-| `reasoning_model` | session configuration | Explicit child-model selection; all children under `uniform`, reviewers under `tiered` |
+| `model_policy` | `inherit` | Use `AGENTS.md`, or select `uniform`, `tiered`, `role-based` (`role`), or `auto` for this run |
+| `reasoning_model` | session configuration | Explicit child-model selection under `uniform` / `tiered` only |
 | `mechanical_model` | recorded mechanical tier | Override discovery's model under `tiered` only |
+| `role_assignments` | recorded role table | Role-to-selection mapping, including `default`, under `role-based` only |
 
 Model overrides never change the already-running caller or rewrite
 `AGENTS.md`. Unavailable models and incompatible options are rejected.
 `review_iterations: 0` still records the initial review; it disables fixes,
 not review. Capture, approach comparison, and rendering stay in-process.
 Only sizeable, independent discovery work fans out, and one read-only
-documentation reviewer checks the result. Budgets count retries and
-rechecks too; a resume does not reset them.
+documentation reviewer per selected review model checks the result.
+Budgets count every model invocation, retry, and recheck; a resume does
+not reset them.
 
 **HTML has a settled visual system:** a pale canvas, white rounded cards,
 left navigation, generous typography, and a deep colored hero, paired
@@ -380,28 +382,82 @@ read-only ones enforce that through `tools:` rather than by being asked
 nicely. A repo without these definitions still works: every skill names a
 built-in fallback.
 
-**Built-ins for mechanical work.** `explore` (finding code) and `task`
-(running documented build and test commands) already run lightweight
-models, so the skills route discovery and verification to them rather
-than to a general-purpose agent. `task` also returns a summary on success
-and full output only on failure, which keeps green build logs out of the
-context entirely.
+**Built-ins for bounded work.** Prefer `explore` for finding code and
+`task` for running documented commands, but their default models do not
+override the selected policy. Preserve role/tool restrictions when
+resolving models through the current harness.
 
-**A recorded policy.** `AGENTS.md` carries a `### Subagent model policy`
-table with two values — `uniform` or `tiered`, and the model the
-mechanical tier resolves to. Each skill classifies **its own** roles under
-a `## Sub-Agent Model Tier` section; the repo decides what those tiers
-cost. Reviewing, judging, and designing are always reasoning roles and
-are never cheapened — a critique that misses a Blocker costs more than it
-saved. An absent table means `uniform`, so repos predating this behave
-exactly as they did.
+**Four recorded policies.** Setup records the confirmed choice under
+`### Subagent model policy` in the target's `AGENTS.md`:
+
+| Policy | Model selection |
+|-|-|
+| `uniform` | Every child uses the spawning agent's model configuration. |
+| `tiered` | Reasoning inherits; mechanical work uses the confirmed cheaper model. |
+| `role-based` (`role`) | Specific task role, then engineering/documentation domain, then an explicit default. |
+| `auto` | The harness chooses through its supported automatic-selection mechanism. |
+
+For role-based configuration, describe assignments in natural language;
+setup resolves model names against the available catalog and confirms
+the resulting table. Assign orchestration, planning, judging, review,
+engineering, documentation, discovery, or verification, leaving unused
+roles out. Specify a default model, `inherit`, or `auto` for other work.
+Model options must also be supported and confirmed. For example:
+
+```markdown
+| Setting | Value |
+|-|-|
+| Policy | role-based |
+| Mechanical-tier model | n/a |
+
+#### Role assignments
+
+| Role | Selection |
+|-|-|
+| orchestration | <orchestrator-model> |
+| planning | <planning-model> |
+| judging | <planning-model> |
+| review | <planning-model> |
+| default | <other-work-model> |
+```
+
+Alternatively, assign `engineering` and `documentation` different
+models, set `review` to `<engineering-model>, <documentation-model>`,
+and set `default` to `auto` to let the harness choose for other work.
+Review takes precedence over either domain. Both models independently
+cover the complete required review: a small combined review needs two
+invocations; separate engineering and QA tracks need four. They share
+neither findings nor report ownership before synthesis. Existing
+concurrency and total-child budgets still apply; insufficient budgets
+require an explicit decision, not a dropped reviewer.
+
+Only review accepts multiple models. Every other role has one selection;
+the role describes the task, not its agent wrapper. A stage runner doing
+planning uses planning's assignment. A review coordinator remains one
+orchestration owner and dispatches the selected read-only reviewers.
+
+`auto` is not shorthand for inheritance: omission of a model field is
+valid only when the harness documents that omission requests automatic
+selection. Unavailable models or unsupported capabilities block with an
+explanation; skills never silently substitute. Configuration cannot
+switch an already-running caller: launch orchestration and other
+in-process owners with their assigned configuration, or follow the
+reported relaunch requirement.
+
+The shared resolution contract ships at
+`.github\skills\dev-plan\references\model-assignment.md`. Model IDs stay
+in target configuration, never portable skills or agent front matter.
+An absent or unreadable policy still means `uniform`; older two-row
+uniform/tiered configurations remain valid, and refresh preserves
+recorded choices unless a change is requested.
 
 Two related controls: `max_subagents` (default 3) caps *concurrency*, not
 total spend, and `dev-review` measures scope before dispatch. Below 5
 changed files **and** 200 changed lines, one independent
-`dev-change-reviewer` runs both passes; larger scopes use separate
-Engineering and QA roles. The parent synthesizes, not repeats, their
-investigations. Extra critiques and review cycles need a stated reason.
+`dev-change-reviewer` per selected model runs both passes; larger scopes
+use separate Engineering and QA roles per model. The parent synthesizes,
+not repeats, their investigations. Extra critiques and review cycles
+need a stated reason.
 
 ## GitHub integration (opt-in)
 

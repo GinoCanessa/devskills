@@ -77,9 +77,12 @@ stage into one anonymous bucket.
   user has not answered. A follow-up question is not a decision, and a
   genuine safety refusal must never be disguised as a user question.
 - **Honor any concurrency cap you were passed** when your skill fans out,
-  and prefer the built-in lightweight agents — `explore` for locating
-  code, `task` for running documented commands — over a general-purpose
-  one for work that does not need judgment.
+  and prefer bounded built-in roles — `explore` for locating code, `task`
+  for running documented commands — when their effective selection
+  satisfies the resolved model policy. Preserve the target stage's task
+  role and policy source, not the generic stage-runner identity. Resolve
+  children under the shared `dev-plan\references\model-assignment.md`
+  contract; never let a built-in default override an explicit assignment.
 - **Keep handoffs compact and bounded.** Follow `dev-do`'s Evidence
   Receipts contract: objective, stage/input identity, baseline and owned
   paths, constraints/decisions, readiness, acceptance evidence, blocker,

@@ -398,18 +398,21 @@ subsequent final execution state and results.}
 
 ## Sub-Agent Model Tier
 
-Resolve each role against the **subagent model policy** in the
-repository's `AGENTS.md` (`## Agent guardrails`). An absent or
-unreadable policy means `uniform`, and every role below runs the
-spawning agent's model.
+Before dispatch, read the **subagent model policy** in `AGENTS.md`
+(`## Agent guardrails`) and `references\model-assignment.md`. The shared
+contract resolves `uniform`, `tiered`, `role-based` (alias `role`), and
+`auto`, including fallbacks, harness capabilities, caller mismatches,
+multiple review models, budgets, and resume identity. An absent or
+unreadable policy means `uniform`.
 
-| Role | Tier | Agent |
-|-|-|-|
-| Adversarial critique of a plan | reasoning | `rubber-duck` |
-| Surveying an unfamiliar area the plan will touch | mechanical | `explore` |
-| Confirming a command or path the plan cites actually exists | mechanical | `explore` |
+| Role | Tier | Assignment role | Agent |
+|-|-|-|-|
+| Adversarial critique of a plan | reasoning | review | `rubber-duck` |
+| Surveying an unfamiliar area the plan will touch | mechanical | discovery | `explore` |
+| Confirming a command or path the plan cites actually exists | mechanical | verification | `explore` |
 
-You author the plan yourself. Step 7 commissions a critique only for
+You author the plan yourself, with assignment role `planning`; apply the
+shared running-caller rule. Step 7 commissions a critique only for
 contested/high-risk choices or requested depth, not every multi-file
 plan. Delegate discovery only for a substantial independent question;
 give it a bounded scope and integrate its evidence rather than repeating

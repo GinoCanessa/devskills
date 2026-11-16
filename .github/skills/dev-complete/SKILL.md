@@ -342,7 +342,8 @@ Hand each stage sub-agent these inputs:
 
 A stage sub-agent runs at the **reasoning** tier — see
 § *Sub-Agent Model Tier*. A stage is the whole skill it names, judgment
-included, and is never cheapened.
+included, and is never reclassified as mechanical. Resolve role-based
+selection from the target stage, not the `dev-stage-runner` wrapper.
 
 **Record a baseline immediately before every dispatch.** Hash the
 stage-owned output used to classify its outcome — `approach.md` for the
@@ -462,21 +463,31 @@ Never edit an artifact to fix a stage's work. Re-dispatch the stage.
 
 ## Sub-Agent Model Tier
 
-Resolve each role against the **subagent model policy** in the
-repository's `AGENTS.md` (`## Agent guardrails`). An absent or
-unreadable policy means `uniform`, and every role below runs the
-spawning agent's model.
+Before dispatch, read the **subagent model policy** in `AGENTS.md`
+(`## Agent guardrails`) and the installed skills' shared
+`dev-plan\references\model-assignment.md` contract. It resolves
+`uniform`, `tiered`, `role-based` (alias `role`), and `auto`, including
+fallbacks, harness capabilities, caller mismatches, multiple review
+models, budgets, and resume identity. An absent or unreadable policy
+means `uniform`. Your in-process role is `orchestration`; configuration
+cannot silently switch this already-running caller.
 
-| Role | Tier | Agent |
-|-|-|-|
-| Running a stage | reasoning | `dev-stage-runner` |
-| Reading an artifact's status or ledger on resume | mechanical | do it yourself |
+| Role | Tier | Assignment role | Agent |
+|-|-|-|-|
+| Running intake (`dev-request` / `dev-report`) | reasoning | documentation | `dev-stage-runner` |
+| Running approaches or planning | reasoning | planning | `dev-stage-runner` |
+| Running execution | reasoning | engineering / documentation | `dev-stage-runner` |
+| Coordinating the review stage | reasoning | orchestration | `dev-stage-runner` |
+| Reading an artifact's status or ledger on resume | mechanical | orchestration | do it yourself |
 
-**A stage is never cheapened.** It is an entire skill — authoring,
-planning, executing, or reviewing — and the run's whole output is what
-those stages produce. The saving this policy is after happens *inside*
-each stage, where `max_subagents` and that skill's own tier table apply;
-you pass the cap through and let the stage spend it.
+**Keep one stage owner.** A review stage owns one report; it passes the
+complete review-model assignment to its read-only reviewers rather than
+running duplicate report writers. Execution uses documentation for
+documentation-only work, otherwise `engineering`. Pass the effective
+policy, assignment source, and task role/domain in the compact handoff;
+each stage resolves its own children from that policy, not from an
+assumption that all roles inherit the coordinator. Keep the existing
+`max_subagents` ceiling and each stage's total-budget rules unchanged.
 
 **You fan out nowhere else.** Resume reads, ledger rebuilds, and baseline
 hashes are small and sequential; delegating them would cost a sub-agent's

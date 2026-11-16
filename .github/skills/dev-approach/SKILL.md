@@ -433,19 +433,24 @@ line above is the half a human sees first.
 
 ## Sub-Agent Model Tier
 
-Resolve each role against the **subagent model policy** in the
-repository's `AGENTS.md` (`## Agent guardrails`). An absent or
-unreadable policy means `uniform`, and every role below runs the
-spawning agent's model.
+Before dispatch, read the **subagent model policy** in `AGENTS.md`
+(`## Agent guardrails`) and the installed skills' shared
+`dev-plan\references\model-assignment.md` contract. It resolves
+`uniform`, `tiered`, `role-based` (alias `role`), and `auto`, including
+fallbacks, harness capabilities, caller mismatches, and resume identity.
+An absent or unreadable policy means `uniform`.
+Your in-process assignment role is `planning`; apply the shared
+running-caller rule to coordination and any collapsed selection.
 
-| Role | Tier | Agent |
-|-|-|-|
-| Approach author | reasoning | `dev-approach-author` |
-| Judge | reasoning | `dev-approach-judge` |
+| Role | Tier | Assignment role | Agent |
+|-|-|-|-|
+| Approach author | reasoning | planning | `dev-approach-author` |
+| Judge | reasoning | judging | `dev-approach-judge` |
 
 **Every role in this skill is a reasoning role.** Its entire output is
-judgment — three designs and a decision between them — and a cheap design
-is not a cheaper design, it is a worse one that still has to be judged.
+judgment — three designs and a decision between them. Under `tiered`,
+never reclassify one as mechanical. Under `role-based` or `auto`, honor
+the resolved selection rather than imposing a model preference.
 
 There is deliberately **no mechanical row**. An author carries no
 sub-agent tool and is told it is one voice, so it cannot delegate

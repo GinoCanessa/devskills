@@ -526,6 +526,12 @@ verbatim** — it is deliberately not duplicated there.
 
 ## Important Rules
 
+- **Honor the configured model assignment.** Read the model policy under
+  `## Agent guardrails` in `AGENTS.md` and the installed skills' shared
+  `dev-plan\references\model-assignment.md` contract. Publishing uses the
+  role-based default, not an engineering/documentation domain. Apply the
+  running-caller rule; configuration cannot switch this session's model,
+  authorize delegation, or bypass integration and publishing gates.
 - **Today's date governs slot expansion.** Never reuse a previous day's
   `<MMDD>` for a numeric slot. For an earlier slot, the user must give
   a full path.

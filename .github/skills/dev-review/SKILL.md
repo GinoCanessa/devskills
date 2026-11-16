@@ -319,6 +319,12 @@ mis-scoping before any expensive work happens.
    rather than reviewing in-process: two agents cost more than one, and
    nothing costs more than a review written by the context under review.
 
+   These counts are **per selected review model**. Resolve assignments
+   under the shared model contract before dispatch: two models mean two
+   combined reviewers below threshold or four reviewers for the two-track
+   branch. Preserve independent findings, scope, and concurrency limits;
+   never split the models between tracks as a substitute for full review.
+
    State which branch you took and the measured counts that decided it.
    A `full` scope is always above the threshold. When the user supplies
    a focus that narrows the scope to a handful of files, measure the
@@ -474,7 +480,8 @@ Preserve pending decisions and public-safe prior lifecycle records.}
 
 - The two role passes (Engineering Lead, QA Lead) run in parallel
   sub-agents **once the scope is at or above the threshold in step 4**,
-  and in a single `dev-change-reviewer` sub-agent below it. They must not
+  and in a single `dev-change-reviewer` sub-agent **per selected model**
+  below it. Each selected model covers both tracks. Reviewers must not
   see each other's findings until the synthesizer step. This is the whole
   point of doing two passes — if they collapse into one, you get one set
   of findings with the illusion of two reviewers. The single-agent branch
@@ -488,7 +495,7 @@ Preserve pending decisions and public-safe prior lifecycle records.}
   promise, and — on a `plan-slot` scope reached through `dev-complete` —
   independence from the context that wrote the code. The first two you
   could restate in prose; the third you cannot recover at all.
-- Both sub-agents must be told **explicitly** that they are read-only:
+- Every reviewer must be told **explicitly** that they are read-only:
   no edits, no commits, no mutating commands. They may run `git diff`,
   `git log`, `git blame`, `git show`, read-only `gh` queries such as
   `gh pr list` and `gh pr view`, `view`, `grep`, `glob`, `lsp`, and
@@ -508,8 +515,9 @@ Preserve pending decisions and public-safe prior lifecycle records.}
   or an explicit user request, not merely remaining concurrency budget.
 - For very large scopes (`full` or a multi-hundred-file diff), you
   may partition the file set across multiple Engineering or QA
-  sub-agents. If you do, give each sub-agent a **non-overlapping**
-  slice and aggregate before synthesizing.
+  sub-agents. Within each model/track combination, give sub-agents
+  **non-overlapping** slices; every selected model must still cover the
+  complete required scope. Aggregate before synthesizing.
 - **Honor `max_subagents`.** Never run more than `max_subagents`
   sub-agents concurrently. If `max_subagents` is `1`, run the
   Engineering and QA passes one after the other rather than in
@@ -518,19 +526,23 @@ Preserve pending decisions and public-safe prior lifecycle records.}
 
 ## Sub-Agent Model Tier
 
-Resolve each role against the **subagent model policy** in the
-repository's `AGENTS.md` (`## Agent guardrails`). An absent or
-unreadable policy means `uniform`, and every role below runs the
-spawning agent's model.
+Before dispatch, read the **subagent model policy** in `AGENTS.md`
+(`## Agent guardrails`) and the installed skills' shared
+`dev-plan\references\model-assignment.md` contract. It resolves
+`uniform`, `tiered`, `role-based` (alias `role`), and `auto`, including
+fallbacks, harness capabilities, caller mismatches, multiple review
+models, budgets, and resume identity. An absent or unreadable policy
+means `uniform`. You coordinate as `orchestration`; only read-only
+reviewers expand a multiple-model assignment, never the report owner.
 
-| Role | Tier | Agent |
-|-|-|-|
-| Engineering Lead pass | reasoning | `dev-eng-reviewer` |
-| QA Lead pass | reasoning | `dev-qa-reviewer` |
-| Both passes over a below-threshold scope | reasoning | `dev-change-reviewer` |
-| Adversarial sanity check | reasoning | `rubber-duck` |
-| Partition slice of a `full` scope | reasoning | `dev-eng-reviewer` / `dev-qa-reviewer` |
-| Locating the affected projects, or resolving a scope to a file list | mechanical | `explore` |
+| Role | Tier | Assignment role | Agent |
+|-|-|-|-|
+| Engineering Lead pass | reasoning | review | `dev-eng-reviewer` |
+| QA Lead pass | reasoning | review | `dev-qa-reviewer` |
+| Both passes over a below-threshold scope | reasoning | review | `dev-change-reviewer` |
+| Adversarial sanity check | reasoning | review | `rubber-duck` |
+| Partition slice of a `full` scope | reasoning | review | `dev-eng-reviewer` / `dev-qa-reviewer` |
+| Locating the affected projects, or resolving a scope to a file list | mechanical | discovery | `explore` |
 
 **Prefer the named agent over a general-purpose one.** Each carries its
 own role brief and its own tool restrictions, so dispatching it is
@@ -543,10 +555,10 @@ judgment end to end, and the cost of a missed Blocker is the whole cost
 this skill exists to avoid. The only mechanical work here is finding out
 *what* to review; deciding what is wrong with it never is. Do not
 reclassify a pass because the diff looks small — a small diff takes the
-single-agent branch in step 4 and spawns one reviewer instead of two,
-which is the saving that scope buys. Scope decides **how many** reviewers
-run, never **which model** reviews and never **whether** a reviewer runs
-at all.
+combined-agent branch in step 4, once per selected model, instead of
+splitting the passes. Scope decides the **review tracks**; model policy
+decides **which models** cover each track. Neither permits skipping
+independent review or reclassifying judgment as mechanical.
 
 ## Iteration Mode
 

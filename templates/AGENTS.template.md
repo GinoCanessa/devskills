@@ -330,26 +330,45 @@ An exploration carries no `Issue` binding.
 
 ### Subagent model policy
 
-Every `dev-*` skill that fans out reads this table before it spawns
-anything, and each skill classifies its own roles as **reasoning** or
-**mechanical**. **An absent or unreadable table means `uniform`** — the
-conservative default, and the behavior every repo had before this table
-existed.
+Every `dev-*` skill reads this policy before dispatch. Each fanning-out
+skill classifies its roles by task and by **reasoning** / **mechanical**
+tier. **An absent or unreadable policy means `uniform`.** Resolve
+assignments with the installed skills' shared
+`dev-plan\references\model-assignment.md` contract; missing explicit
+assignments or unavailable capabilities block dispatch, not fall back.
 
 | Setting | Value |
 |-|-|
-| Policy | {TBD: uniform / tiered} |
-| Mechanical-tier model | {TBD: a cheap model id, or n/a under uniform} |
+| Policy | {TBD: uniform / tiered / role-based / auto} |
+| Mechanical-tier model | {TBD: confirmed model id under tiered; otherwise n/a} |
 
 - **`uniform`** — every sub-agent runs the spawning agent's model
   configuration, whatever its role.
 - **`tiered`** — a sub-agent in a **reasoning** role runs the spawning
   agent's configuration; a sub-agent in a **mechanical** role runs the
   recorded mechanical-tier model.
+- **`role-based`** (alias **`role`**) — use the confirmed role assignments
+  below. Match the specific task role first, then its engineering or
+  documentation domain, then `default`. Multiple review models each
+  independently cover every required review track.
+- **`auto`** — use the harness's documented automatic-selection mechanism.
+  An omitted model field counts only if it requests auto, not inheritance.
 
-The role classification lives in the skills, not here: it is a property
-of the loop and does not vary between repositories. Only the policy and
-the model id do, which is why they are the two rows recorded.
+#### Role assignments
+
+{TBD: under role-based, record the confirmed Role / Selection table with
+optional orchestration, planning, judging, review, engineering,
+documentation, discovery, and verification rows, plus a required default.
+Selections are available model IDs with supported confirmed options,
+inherit, or auto; only review may list multiple concrete models.
+Otherwise replace this paragraph with n/a.}
+
+Keep model IDs here, never in portable skills or agent front matter.
+Preserve concurrency and total-child budgets; count each review-model
+invocation and recheck. An assignment cannot change a running caller:
+launch the orchestrator or other in-process owner with the selected
+configuration, and report a mismatch rather than pretending to switch.
 
 A recorded value here is a **resolved answer**. `dev-setup` asks once and
-never re-prompts, exactly as it treats the GitHub integration block.
+does not re-prompt on refresh unless a policy change was requested or
+the recorded selection is incomplete or unsupported.

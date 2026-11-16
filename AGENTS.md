@@ -283,8 +283,8 @@ change to a skill done:
 
 9. **No model id in a worker skill.** Which model a tier resolves to is
    repo-specific and belongs in the target's `AGENTS.md`; a worker skill
-   names only the *tier*. The pattern matches the vendor-prefixed id
-   forms the Copilot CLI accepts. This must return nothing:
+   names only the task role and tier. The pattern matches vendor-prefixed
+   id forms the Copilot CLI accepts. This must return nothing:
 
    ```powershell
    $portable = @(Get-ChildItem .github\skills -Directory -Exclude dev-setup |
@@ -439,6 +439,20 @@ change to a skill done:
     These are inspection cases, not a new test framework or proof of
     future task savings. README's matched-task pilot measures those.
 
+14. **Walk model-assignment decisions.** Inspect uniform/tiered legacy
+    settings, absent-policy fallback, `role` normalization, specific-role
+    versus domain versus default precedence, and default `inherit` /
+    `auto`. Resolve both single-model role assignments and multiple
+    independent review models. Confirm each selected model covers every
+    required track, budgets count all invocations/rechecks, and one
+    coordinator owns the report. Inspect stage-wrapper and fallback-agent
+    classification, unsupported models/options, malformed role tables,
+    running-caller mismatch, and true harness auto versus inherited
+    omission. Refresh must preserve recorded choices; policy changes
+    retire stale assignments only with approval. Verify the shared
+    model-assignment reference is copied and hash-checked in both git
+    modes. These are inspection cases, not a new test framework.
+
 ---
 
 ## Lint / format
@@ -559,7 +573,9 @@ These are decisions, not preferences. Violating one is a review Blocker.
   and is the same everywhere — and then defers to the recorded policy for
   what each tier resolves to. An absent policy means `uniform`, which is
   the behavior every repo had before the policy existed. Guarded by
-  § *Test* check 9.
+  § *Test* check 9. Role-based assignments and auto resolution follow
+  `.github\skills\dev-plan\references\model-assignment.md`; concrete
+  choices remain in the target's `AGENTS.md`.
 - **Delegation is justified, never reflexive.** A skill that fans out says
   what makes the work worth a separate context — independence, isolation,
   or size — and names a threshold below which it does the work in-process.
@@ -606,12 +622,11 @@ These are decisions, not preferences. Violating one is a review Blocker.
   preserving phase history. Bug reports use repository-relative paths
   and safe service references, with marked privacy redactions in quoted
   evidence; exact sensitive locations stay in private diagnostics.
-- **Prefer a built-in agent to a general-purpose one.** `explore` and
-  `task` already run lightweight models, so routing discovery and
-  documented-command runs to them *is* the mechanical tier — no `model:`
-  needs passing to get it. A named `.github/agents/` role is for work no
-  built-in covers, and it earns its definition through a role brief and a
-  `tools:` restriction, not through a cheaper model.
+- **Prefer bounded built-in roles when their selection fits policy.**
+  Use `explore` for discovery and `task` for documented-command runs,
+  but never let their default models override a resolved assignment.
+  A named `.github/agents/` role earns its definition through a role
+  brief and a `tools:` restriction, not through a model pin.
 - **A read-only role is enforced by `tools:`, not by asking.**
   `dev-approach-judge` carries no edit tool, and the two reviewer agents
   carry none either. Never add one back to make a role "more useful" —
@@ -723,11 +738,11 @@ It never commits, including when the output directory is outside scratch.
 
 ### Subagent model policy
 
-Every `dev-*` skill that fans out reads this table before it spawns
-anything, and each skill classifies its own roles as **reasoning** or
-**mechanical**. **An absent or unreadable table means `uniform`** — the
-conservative default, and the behavior every repo had before this table
-existed.
+Every `dev-*` skill reads this policy before dispatch. Fanning-out skills
+classify their roles by task and **reasoning** / **mechanical** tier.
+**An absent or unreadable policy means `uniform`.** Resolve assignments
+with `.github\skills\dev-plan\references\model-assignment.md`; an unknown
+policy or incomplete explicit assignment blocks rather than falls back.
 
 | Setting | Value |
 |-|-|
@@ -739,12 +754,20 @@ existed.
 - **`tiered`** — a sub-agent in a **reasoning** role runs the spawning
   agent's configuration; a sub-agent in a **mechanical** role runs the
   recorded mechanical-tier model.
+- **`role-based`** (alias **`role`**) — the target's role table matches
+  the specific task, then engineering/documentation domain, then its
+  required default. Only review may select multiple models; each covers
+  every required track independently, within existing budgets.
+- **`auto`** — the harness selects through its documented mechanism;
+  omission that merely inherits a fixed model does not qualify.
 
 The role classification lives in the skills, not here: it is a property
-of the loop and does not vary between repositories. Only the policy and
-the model id do, which is why they are the two rows recorded. Each
-fanning-out skill carries its own classification under a
-`## Sub-Agent Model Tier` section.
+of the loop and does not vary between repositories. Policy, model IDs,
+supported options, and any role assignments belong here. Each fanning-out
+skill carries its classification under `## Sub-Agent Model Tier`.
+This repository retains its recorded `tiered` policy; no role table is
+needed. Configuration never changes an already-running caller, and
+built-in defaults must not override its resolved selection.
 
 This repository records `tiered` because its own worker skills fan out
 heavily — a single `dev-complete` run dispatches one sub-agent per stage

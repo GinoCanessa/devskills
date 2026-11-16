@@ -814,6 +814,12 @@ Report the actual outcome, including a refusal or partial success:
 
 ## Important Rules
 
+- **Honor the configured model assignment.** Read the model policy under
+  `## Agent guardrails` in `AGENTS.md` and the installed skills' shared
+  `dev-plan\references\model-assignment.md` contract. Publishing uses the
+  role-based default, not an engineering/documentation domain. Apply the
+  running-caller rule; configuration cannot switch this session's model,
+  authorize delegation, or bypass integration and publishing gates.
 - **State the mode in your first response.** Slot mode or branch mode,
   and why you picked it. The user gets to correct a mis-chosen scope
   before it becomes a mis-scoped pull request.
